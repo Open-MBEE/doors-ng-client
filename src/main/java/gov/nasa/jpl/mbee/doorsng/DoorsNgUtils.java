@@ -8,7 +8,6 @@ import org.eclipse.lyo.client.exception.RootServicesException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
 import org.eclipse.lyo.client.oslc.jazz.JazzFormAuthClient;
 import org.eclipse.lyo.client.oslc.jazz.JazzRootServicesHelper;
-import org.eclipse.lyo.client.oslc.resources.Requirement;
 import org.eclipse.lyo.client.oslc.resources.RmUtil;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 
@@ -125,8 +124,8 @@ public class DoorsNgUtils {
 
     static int count = 0;
 
-    public static CustomRequirement getNewRequirement(String title) {
-        CustomRequirement requirement = new CustomRequirement();
+    public static Requirement getNewRequirement(String title) {
+        Requirement requirement = new Requirement();
         requirement.setInstanceShape(featureInstanceShape.getAbout());
         requirement.setTitle(title);
         requirement.setSysmlId(String.format("%d", count++));
