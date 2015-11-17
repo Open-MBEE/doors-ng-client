@@ -22,13 +22,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
+import java.net.URISyntaxException;
+import java.util.Date;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.xml.namespace.QName;
+
+import net.oauth.OAuthException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -36,9 +38,7 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.http.HttpHeaders;
-import org.apache.http.HttpStatus;
 import org.apache.wink.client.ClientResponse;
-import org.eclipse.lyo.client.exception.RootServicesException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
 import org.eclipse.lyo.client.oslc.OslcClient;
 import org.eclipse.lyo.client.oslc.jazz.JazzFormAuthClient;
@@ -46,16 +46,13 @@ import org.eclipse.lyo.client.oslc.jazz.JazzRootServicesHelper;
 import org.eclipse.lyo.client.oslc.resources.OslcQuery;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryResult;
-import org.eclipse.lyo.client.oslc.resources.Requirement;
-import org.eclipse.lyo.client.oslc.resources.RequirementCollection;
 import org.eclipse.lyo.client.oslc.resources.RmConstants;
 import org.eclipse.lyo.client.oslc.resources.RmUtil;
-import org.eclipse.lyo.oslc4j.core.OSLC4JUtils;
 import org.eclipse.lyo.oslc4j.core.model.Link;
 import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
 import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
-
+import org.eclipse.lyo.oslc4j.provider.jena.AbstractOslcRdfXmlProvider;
 
 
 
@@ -116,282 +113,99 @@ public class DoorsClient {
 			String requirementFactory = DoorsNgUtils.getRequirementFactory();
 			String queryCapability = DoorsNgUtils.getQueryCapability();
 
+//			Date start;
+//			Date end;
+//			int nmax = 1;
+//			String msgFormat = "creating %d requirements: %d ms (%f req/s)";
+//			
+//            for (int jj = 0; jj < 2; jj++) {
+//        			start = new Date();
+//        			for (int ii = 0; ii < nmax; ii++) {
+//        			    createRequirement(featureInstanceShape, requirementFactory, client);
+//        			}
+//        			end = new Date();
+//                long duration = end.getTime() - start.getTime();
+//                System.out.println(String.format(msgFormat, nmax, duration, nmax * 1000. / duration));
+//                
+//                nmax = (int)Math.pow( 10, jj );
+//            }
+			
+			getRequirements(queryCapability, client);
 
-				// We need to use Resource shapes to properly handle date attributes attributes,
-				// so they aren't interpreted as dateTime.
-				// The following 4 lines will enable the logic to properly handle date attributes
-//				List<ResourceShape> shapes = new ArrayList<ResourceShape>();
-//				shapes.add(featureInstanceShape);
-//				shapes.add(collectionInstanceShape);
-//				OSLC4JUtils.setShapes(shapes);
-//				OSLC4JUtils.setInferTypeFromShape("true");
-
-				Requirement requirement = null;
-				RequirementCollection collection = null;
-				URI rootFolder = null;
-
-				String req01URL=null;
-				String req02URL=null;
-				String req03URL=null;
-				String req04URL=null;
-				String reqcoll01URL=null;
-
-				String primaryText = null;
-				if (( featureInstanceShape != null ) && (requirementFactory != null ) ){
-
-					// Create REQ01
-				    requirement = DoorsNgUtils.getNewRequirement("Req01");
-
-					// Decorate the PrimaryText
-					primaryText = "My Primary Text";
-					org.w3c.dom.Element obj = RmUtil.convertStringToHTML(primaryText);
-					requirement.getExtendedProperties().put(RmConstants.PROPERTY_PRIMARY_TEXT, obj);
-
-					requirement.setDescription("Created By EclipseLyo");
-					requirement.addImplementedBy(new Link(new URI("http://google.com"), "Link in REQ01"));
-					//Create the Requirement
-					ClientResponse creationResponse = client.createResource(
-							requirementFactory, requirement,
-							OslcMediaType.APPLICATION_RDF_XML,
-							OslcMediaType.APPLICATION_RDF_XML);
-					req01URL = creationResponse.getHeaders().getFirst(HttpHeaders.LOCATION);
-					creationResponse.consumeContent();
-
-					// Create REQ02
-                    requirement = DoorsNgUtils.getNewRequirement("Req02");
-					requirement.setDescription("Created By EclipseLyo");
-					requirement.addValidatedBy(new Link(new URI("http://bancomer.com"), "Link in REQ02"));
-					//Create the change request
-					creationResponse = client.createResource(
-							requirementFactory, requirement,
-							OslcMediaType.APPLICATION_RDF_XML,
-							OslcMediaType.APPLICATION_RDF_XML);
-
-					req02URL = creationResponse.getHeaders().getFirst(HttpHeaders.LOCATION);
-					creationResponse.consumeContent();
-
-					// Create REQ03
-                    requirement = DoorsNgUtils.getNewRequirement("Req03");
-//					requirement = new Requirement();
-//					requirement.setInstanceShape(featureInstanceShape.getAbout());
-//					requirement.setTitle("Req03");
-					requirement.setDescription("Created By EclipseLyo");
-					requirement.addValidatedBy(new Link(new URI("http://outlook.com"), "Link in REQ03"));
-					//Create the change request
-					creationResponse = client.createResource(
-							requirementFactory, requirement,
-							OslcMediaType.APPLICATION_RDF_XML,
-							OslcMediaType.APPLICATION_RDF_XML);
-					req03URL = creationResponse.getHeaders().getFirst(HttpHeaders.LOCATION);
-					creationResponse.consumeContent();
-
-					// Create REQ04
-                    requirement = DoorsNgUtils.getNewRequirement("Req04");
-//					requirement = new Requirement();
-//					requirement.setInstanceShape(featureInstanceShape.getAbout());
-//					requirement.setTitle("Req04");
-					requirement.setDescription("Created By EclipseLyo");
-
-					//Create the Requirement
-					creationResponse = client.createResource(
-							requirementFactory, requirement,
-							OslcMediaType.APPLICATION_RDF_XML,
-							OslcMediaType.APPLICATION_RDF_XML);
-					req04URL = creationResponse.getHeaders().getFirst(HttpHeaders.LOCATION);
-					creationResponse.consumeContent();
-
-					// Now create a collection
-					// Create REQ04
-					collection = new RequirementCollection();
-
-					collection.addUses(new URI(req03URL));
-					collection.addUses(new URI(req04URL));
-
-					collection.setInstanceShape(collectionInstanceShape.getAbout());
-					collection.setTitle("Collection01");
-					collection.setDescription("Created By EclipseLyo");
-					//Create the change request
-					creationResponse = client.createResource(
-							requirementFactory, collection,
-							OslcMediaType.APPLICATION_RDF_XML,
-							OslcMediaType.APPLICATION_RDF_XML);
-					reqcoll01URL = creationResponse.getHeaders().getFirst(HttpHeaders.LOCATION);
-					creationResponse.consumeContent();
-
-				}
-
-				// Check that everything was properly created
-				 if ( req01URL == null ||
-					  req02URL == null ||
-					  req03URL == null ||
-					  req04URL == null ||
-					 reqcoll01URL == null ) {
-					 throw new Exception("Failed to create an artifact");
-				 }
-
-				// GET the root folder based on First requirement created
-				ClientResponse getResponse = client.getResource(req01URL,OslcMediaType.APPLICATION_RDF_XML);
-				requirement = getResponse.getEntity(Requirement.class);
-
-				// Display attributes based on the Resource shape
-				Map<QName, Object> requestExtProperties = requirement.getExtendedProperties();
-				for ( QName qname : requestExtProperties.keySet() ){
-					Property attr = featureInstanceShape.getProperty(new URI (qname.getNamespaceURI() + qname.getLocalPart()));
-					String name = null;
-					if ( attr != null){
-						name = attr.getTitle();
-						if ( name != null ) {
-							System.out.println(name  + " = " + requirement.getExtendedProperties().get(qname));
-						}
-					}
-				}
-
-
-				//Save the URI of the root folder in order to used it easily
-				rootFolder = (URI) requirement.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER);
-				Object changedPrimaryText =  (Object ) requirement.getExtendedProperties().get(RmConstants.PROPERTY_PRIMARY_TEXT);
-				if ( changedPrimaryText == null ){
-					// Check with the workaround
-					 changedPrimaryText =  (Object ) requirement.getExtendedProperties().get(PROPERTY_PRIMARY_TEXT_WORKAROUND);
-				}
-				String primarytextString = null;
-				if (changedPrimaryText != null ) {
-					primarytextString = changedPrimaryText.toString(); // Handle the case where Primary Text is returned as XMLLiteral
-				}
-
-				if ( ( primarytextString != null) && (! primarytextString.contains(primaryText)) ) {
-					logger.log(Level.SEVERE, "Error getting primary Text");
-				}
-
-				//QUERIES
-				// SCENARIO 01  Do a query for type= Requirements
-				OslcQueryParameters queryParams = new OslcQueryParameters();
-				queryParams.setPrefix("rdf=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>");
-				queryParams.setWhere("rdf:type=<http://open-services.net/ns/rm#Requirement>");
-				OslcQuery query = new OslcQuery(client, queryCapability, 1, queryParams);
-				OslcQueryResult result = query.submit();
-				boolean processAsJavaObjects = false;
-				int resultsSize = result.getMembersUrls().length;
-				processPagedQueryResults(result,client, processAsJavaObjects);
-				System.out.println("\n------------------------------\n");
-				System.out.println("Number of Results for SCENARIO 01 = " + resultsSize + "\n");
-
-				if (true) return;
-
-				// SCENARIO 02 	Do a query for type= Requirements and for it folder container = rootFolder
-				queryParams = new OslcQueryParameters();
-				queryParams.setPrefix("nav=<http://com.ibm.rdm/navigation#>,rdf=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>");
-				queryParams.setWhere("rdf:type=<http://open-services.net/ns/rm#Requirement> and nav:parent=<" + rootFolder + ">");
-				query = new OslcQuery(client, queryCapability, 1, queryParams);
-				result = query.submit();
-				processAsJavaObjects = false;
-				resultsSize = result.getMembersUrls().length;
-				processPagedQueryResults(result,client, processAsJavaObjects);
-				System.out.println("\n------------------------------\n");
-				System.out.println("Number of Results for SCENARIO 02 = " + resultsSize + "\n");
-
-				// SCENARIO 03	Do a query for title
-				queryParams = new OslcQueryParameters();
-				queryParams.setPrefix("dcterms=<http://purl.org/dc/terms/>");
-				queryParams.setWhere("dcterms:title=\"Req04\"");
-				query = new OslcQuery(client, queryCapability, 1, queryParams);
-				result = query.submit();
-				resultsSize = result.getMembersUrls().length;
-				processAsJavaObjects = false;
-				processPagedQueryResults(result,client, processAsJavaObjects);
-				System.out.println("\n------------------------------\n");
-				System.out.println("Number of Results for SCENARIO 03 = " + resultsSize + "\n");
-
-				// SCENARIO 04	Do a query for the link that is implemented
-				queryParams = new OslcQueryParameters();
-				queryParams.setPrefix("oslc_rm=<http://open-services.net/ns/rm#>");
-				queryParams.setWhere("oslc_rm:implementedBy=<http://google.com>");
-				query = new OslcQuery(client, queryCapability, 1, queryParams);
-				result = query.submit();
-				resultsSize = result.getMembersUrls().length;
-				processAsJavaObjects = false;
-				processPagedQueryResults(result,client, processAsJavaObjects);
-				System.out.println("\n------------------------------\n");
-				System.out.println("Number of Results for SCENARIO 04 = " + resultsSize + "\n");
-
-				// SCENARIO 05	Do a query for the links that is validated
-				queryParams = new OslcQueryParameters();
-				queryParams.setPrefix("oslc_rm=<http://open-services.net/ns/rm#>");
-				queryParams.setWhere("oslc_rm:validatedBy in [<http://bancomer.com>,<http://outlook.com>]");
-				query = new OslcQuery(client, queryCapability, 1, queryParams);
-				result = query.submit();
-				resultsSize = result.getMembersUrls().length;
-				processAsJavaObjects = false;
-				processPagedQueryResults(result,client, processAsJavaObjects);
-				System.out.println("\n------------------------------\n");
-				System.out.println("Number of Results for SCENARIO 05 = " + resultsSize + "\n");
-
-				// SCENARIO 06 Do a query for it container folder and for the link that is implemented
-				queryParams = new OslcQueryParameters();
-				queryParams.setPrefix("nav=<http://com.ibm.rdm/navigation#>,oslc_rm=<http://open-services.net/ns/rm#>");
-				queryParams.setWhere("nav:parent=<"+rootFolder+"> and oslc_rm:validatedBy=<http://bancomer.com>");
-				query = new OslcQuery(client, queryCapability, 1, queryParams);
-				result = query.submit();
-				resultsSize = result.getMembersUrls().length;
-				processAsJavaObjects = false;
-				processPagedQueryResults(result,client, processAsJavaObjects);
-				System.out.println("\n------------------------------\n");
-				System.out.println("Number of Results for SCENARIO 06 = " + resultsSize + "\n");
-
-
-				// GET resources from req03 in order edit its values
-				getResponse = client.getResource(req03URL,OslcMediaType.APPLICATION_RDF_XML);
-				requirement = getResponse.getEntity(Requirement.class);
-				// Get the eTAG, we need it to update
-				String etag = getResponse.getHeaders().getFirst(OSLCConstants.ETAG);
-				getResponse.consumeContent();
-				requirement.setTitle("My new Title");
-				requirement.addImplementedBy(new Link(new URI("http://google.com"), "Link created by an Eclipse Lyo user"));
-
-				// Update the requirement with the proper etag
-				ClientResponse updateResponse = client.updateResource(req03URL,
-						requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, etag);
-
-				updateResponse.consumeContent();
-
-				/*Do a query in order to see if the requirement have changed*/
-				// SCENARIO 07 Do a query for the new title just changed
-				queryParams = new OslcQueryParameters();
-				queryParams.setPrefix("dcterms=<http://purl.org/dc/terms/>");
-				queryParams.setWhere("dcterms:title=\"My new Title\"");
-				query = new OslcQuery(client, queryCapability, 1, queryParams);
-				result = query.submit();
-				resultsSize = result.getMembersUrls().length;
-				processAsJavaObjects = false;
-				processPagedQueryResults(result,client, processAsJavaObjects);
-				System.out.println("\n------------------------------\n");
-				System.out.println("Number of Results for SCENARIO 07 = " + resultsSize + "\n");
-
-				// SCENARIO 08	Do a query for implementedBy links
-				queryParams = new OslcQueryParameters();
-				queryParams.setPrefix("oslc_rm=<http://open-services.net/ns/rm#>");
-				queryParams.setWhere("oslc_rm:implementedBy=<http://google.com>");
-				query = new OslcQuery(client, queryCapability, 1, queryParams);
-				result = query.submit();
-				resultsSize = result.getMembersUrls().length;
-				processAsJavaObjects = false;
-				processPagedQueryResults(result,client, processAsJavaObjects);
-				System.out.println("\n------------------------------\n");
-				System.out.println("Number of Results for SCENARIO 08 = " + resultsSize + "\n");
 		} catch (Exception e) {
 			logger.log(Level.SEVERE,e.getMessage(),e);
 		}
-
-
-
 	}
 
+	private static void getRequirements(String queryCapability, JazzFormAuthClient client) throws URISyntaxException, IOException, OAuthException {
+
+		OslcQueryParameters queryParams = new OslcQueryParameters();
+		//queryParams.setPrefix("dcterms=<http://purl.org/dc/terms/>");
+		//queryParams.setWhere("dcterms:sysmlid=\"123\"");
+		OslcQuery query = new OslcQuery(client, queryCapability, 10, queryParams);
+		OslcQueryResult result = query.submit();
+		boolean processAsJavaObjects = true;
+		int resultsSize = result.getMembersUrls().length;
+		processPagedQueryResults(result, client, processAsJavaObjects);
+		System.out.println("\n------------------------------\n");
+		System.out.println("Number of Results for query 1 = " + resultsSize + "\n");
+//
+//		String requirementURL = null;
+//		
+//		if ( result != null ) {
+//			String [] returnedURLS = result.getMembersUrls();
+//			System.out.println("Printing Stuff");
+//			if (( returnedURLS != null ) && ( returnedURLS.length > 0 )) {
+//				requirementURL = returnedURLS[0];
+//			}
+//		}
+//		
+//		System.out.println(requirementURL);
+//		System.out.println("Starting getResponse");
+//		if ( requirementURL != null ) {
+//			// Get the requirement
+//			ClientResponse getResponse = client.getResource(requirementURL, OslcMediaType.APPLICATION_RDF_XML);
+//
+//			// to handle datatype format exception (some system datetime attributes in doors, empty value in some attributes,...)
+//			// Those attributes will not be parse and not be add in the requirement class
+//			System.setProperty(AbstractOslcRdfXmlProvider.OSLC4J_STRICT_DATATYPES, "false");
+//
+//			requirement = getResponse.getEntity(CustomRequirement.class);
+//			//System.out.println(requirement.getSysmlId());
+//			// Get the eTAG, we need it to update
+//			String etag = getResponse.getHeaders().getFirst(OSLCConstants.ETAG);
+//			getResponse.consumeContent();
+//		}
+
+	}
+	
+	private static void createRequirement(ResourceShape featureInstanceShape, String requirementFactory, JazzFormAuthClient client) throws URISyntaxException, IOException, OAuthException {
+        CustomRequirement requirement = null;
+
+        if (( featureInstanceShape != null ) && (requirementFactory != null ) ){
+            // Create REQ01
+            requirement = DoorsNgUtils.getNewRequirement("Req01");
+            requirement.setDescription("Created By EclipseLyo");
+            requirement.setSysmlId("123");
+            requirement.addImplementedBy(new Link(new URI("http://google.com"), "Link in REQ01"));
+            //Create the Requirement
+
+            ClientResponse creationResponse = client.createResource(
+                    requirementFactory, requirement,
+                    OslcMediaType.APPLICATION_RDF_XML,
+                    OslcMediaType.APPLICATION_RDF_XML);
+            String url = creationResponse.getHeaders().getFirst(HttpHeaders.LOCATION);
+            creationResponse.consumeContent();
+        }           
+
+	}
+	
 	private static void processPagedQueryResults(OslcQueryResult result, OslcClient client, boolean asJavaObjects) {
 		int page = 1;
 		//For now, just show first 5 pages
 		do {
 			System.out.println("\nPage " + page + ":\n");
-			processCurrentPage(result,client,asJavaObjects);
+			processCurrentPage(result, client, asJavaObjects);
 			if (result.hasNext() && page < 5) {
 				result = result.next();
 				page++;
@@ -416,8 +230,13 @@ public class DoorsClient {
 					//De-serialize it as a Java object
 					if (asJavaObjects) {
 						   Requirement req = response.getEntity(Requirement.class);
+						   Map<QName, Object> xreq = req.getExtendedProperties();
+						   for(QName key: xreq.keySet()) {
+							   System.out.println(String.format("%s - %s", key, xreq.get(key)));
+						   }
+						   System.out.println(String.format("%s : %s", req.getTitle(), req.getSysmlId()));
 						   //printRequirementInfo(req);   //print a few attributes
-						   System.out.println(String.format("%s: %s", req.getIdentifier(), req.getTitle()));
+						   //System.out.println(String.format("%s: %s", req.getIdentifier(), req.getTitle()));
 					} else {
 
 						//Just print the raw RDF/XML (or process the XML as desired)
