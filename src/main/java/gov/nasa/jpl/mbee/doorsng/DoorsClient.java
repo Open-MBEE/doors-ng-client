@@ -16,7 +16,6 @@ package gov.nasa.jpl.mbee.doorsng;
  *     Gabriel Ruelas      - Fix handling of Rich text, include parsing extended properties
  *******************************************************************************/
 
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,228 +53,235 @@ import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 import org.eclipse.lyo.oslc4j.provider.jena.AbstractOslcRdfXmlProvider;
 
-
-
 /**
- * Samples of logging in to Rational Requirements Composer and running OSLC operations
+ * Samples of logging in to Rational Requirements Composer and running OSLC
+ * operations
  *
  *
- * - run an OLSC Requirement query and retrieve OSLC Requirements and de-serialize them as Java objects
- * - TODO:  Add more requirement sample scenarios
+ * - run an OLSC Requirement query and retrieve OSLC Requirements and
+ * de-serialize them as Java objects - TODO: Add more requirement sample
+ * scenarios
  *
  */
 public class DoorsClient {
 
-	private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
+    private static final Logger logger                           = Logger.getLogger(DoorsClient.class.getName());
 
-	// Following is a workaround for primaryText issue in DNG ( it is PrimaryText instead of primaryText
-	private static final QName PROPERTY_PRIMARY_TEXT_WORKAROUND   = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
+    // Following is a workaround for primaryText issue in DNG ( it is
+    // PrimaryText instead of primaryText
+    private static final QName  PROPERTY_PRIMARY_TEXT_WORKAROUND = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
 
-	/**
-	 * Login to the RRC server and perform some OSLC actions
-	 * @param args
-	 * @throws ParseException
-	 */
-	public static void main(String[] args) throws ParseException {
+    /**
+     * Login to the RRC server and perform some OSLC actions
+     * 
+     * @param args
+     * @throws ParseException
+     */
+    public static void main(String[] args) throws ParseException {
 
-		Options options=new Options();
+        Options options = new Options();
 
-		options.addOption("url", true, "url");
-		options.addOption("user", true, "user ID");
-		options.addOption("password", true, "password");
-		options.addOption("project",true,"project area");
+        options.addOption("url", true, "url");
+        options.addOption("user", true, "user ID");
+        options.addOption("password", true, "password");
+        options.addOption("project", true, "project area");
 
-		CommandLineParser cliParser = new GnuParser();
+        CommandLineParser cliParser = new GnuParser();
 
-		//Parse the command line
-		CommandLine cmd = cliParser.parse(options, args);
+        // Parse the command line
+        CommandLine cmd = cliParser.parse(options, args);
 
-		if (!validateOptions(cmd)) {
-			logger.severe("Syntax:  java <class_name> -url https://<server>:port/<context>/ -user <user> -password <password> -project \"<project_area>\"");
-			logger.severe("Example: java RRCFormSample -url https://exmple.com:9443/rm -user ADMIN -password ADMIN -project \"JKE Banking (Requirements Management)\"");
-			return;
-		}
+        if (!validateOptions(cmd)) {
+            logger.severe(
+                    "Syntax:  java <class_name> -url https://<server>:port/<context>/ -user <user> -password <password> -project \"<project_area>\"");
+            logger.severe(
+                    "Example: java RRCFormSample -url https://exmple.com:9443/rm -user ADMIN -password ADMIN -project \"JKE Banking (Requirements Management)\"");
+            return;
+        }
 
-		String webContextUrl = cmd.getOptionValue("url");
-		String user = cmd.getOptionValue("user");
-		String password = cmd.getOptionValue("password");
-		String projectArea = cmd.getOptionValue("project");
+        String webContextUrl = cmd.getOptionValue("url");
+        String user = cmd.getOptionValue("user");
+        String password = cmd.getOptionValue("password");
+        String projectArea = cmd.getOptionValue("project");
 
+        boolean initSuccess = DoorsNgUtils.init(webContextUrl, user, password, projectArea);
+        if (!initSuccess)
+            return;
 
-		boolean initSuccess = DoorsNgUtils.init( webContextUrl, user, password, projectArea );
-		if ( !initSuccess ) return;
-		
-		try {
-			JazzRootServicesHelper helper = DoorsNgUtils.getHelper();
-			JazzFormAuthClient client = DoorsNgUtils.getClient();
-			ResourceShape featureInstanceShape = DoorsNgUtils.getFeatureInstanceShape();
-			ResourceShape collectionInstanceShape = DoorsNgUtils.getCollectionInstanceShape();
-			String requirementFactory = DoorsNgUtils.getRequirementFactory();
-			String queryCapability = DoorsNgUtils.getQueryCapability();
+        try {
+            JazzRootServicesHelper helper = DoorsNgUtils.getHelper();
+            JazzFormAuthClient client = DoorsNgUtils.getClient();
+            ResourceShape featureInstanceShape = DoorsNgUtils.getFeatureInstanceShape();
+            ResourceShape collectionInstanceShape = DoorsNgUtils.getCollectionInstanceShape();
+            String requirementFactory = DoorsNgUtils.getRequirementFactory();
+            String queryCapability = DoorsNgUtils.getQueryCapability();
 
-//			Date start;
-//			Date end;
-//			int nmax = 1;
-//			String msgFormat = "creating %d requirements: %d ms (%f req/s)";
-//			
-//            for (int jj = 0; jj < 2; jj++) {
-//        			start = new Date();
-//        			for (int ii = 0; ii < nmax; ii++) {
-//        			    createRequirement(featureInstanceShape, requirementFactory, client);
-//        			}
-//        			end = new Date();
-//                long duration = end.getTime() - start.getTime();
-//                System.out.println(String.format(msgFormat, nmax, duration, nmax * 1000. / duration));
-//                
-//                nmax = (int)Math.pow( 10, jj );
-//            }
-			
-			getRequirements(queryCapability, client);
+            // Date start;
+            // Date end;
+            // int nmax = 1;
+            // String msgFormat = "creating %d requirements: %d ms (%f req/s)";
+            //
+            // for (int jj = 0; jj < 2; jj++) {
+            // start = new Date();
+            // for (int ii = 0; ii < nmax; ii++) {
+            // createRequirement(featureInstanceShape, requirementFactory,
+            // client);
+            // }
+            // end = new Date();
+            // long duration = end.getTime() - start.getTime();
+            // System.out.println(String.format(msgFormat, nmax, duration, nmax
+            // * 1000. / duration));
+            //
+            // nmax = (int)Math.pow( 10, jj );
+            // }
 
-		} catch (Exception e) {
-			logger.log(Level.SEVERE,e.getMessage(),e);
-		}
-	}
+            getRequirements(queryCapability, client);
 
-	private static void getRequirements(String queryCapability, JazzFormAuthClient client) throws URISyntaxException, IOException, OAuthException {
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
+        }
+    }
 
-		OslcQueryParameters queryParams = new OslcQueryParameters();
-		//queryParams.setPrefix("dcterms=<http://purl.org/dc/terms/>");
-		//queryParams.setWhere("dcterms:sysmlid=\"123\"");
-		OslcQuery query = new OslcQuery(client, queryCapability, 10, queryParams);
-		OslcQueryResult result = query.submit();
-		boolean processAsJavaObjects = true;
-		int resultsSize = result.getMembersUrls().length;
-		processPagedQueryResults(result, client, processAsJavaObjects);
-		System.out.println("\n------------------------------\n");
-		System.out.println("Number of Results for query 1 = " + resultsSize + "\n");
-//
-//		String requirementURL = null;
-//		
-//		if ( result != null ) {
-//			String [] returnedURLS = result.getMembersUrls();
-//			System.out.println("Printing Stuff");
-//			if (( returnedURLS != null ) && ( returnedURLS.length > 0 )) {
-//				requirementURL = returnedURLS[0];
-//			}
-//		}
-//		
-//		System.out.println(requirementURL);
-//		System.out.println("Starting getResponse");
-//		if ( requirementURL != null ) {
-//			// Get the requirement
-//			ClientResponse getResponse = client.getResource(requirementURL, OslcMediaType.APPLICATION_RDF_XML);
-//
-//			// to handle datatype format exception (some system datetime attributes in doors, empty value in some attributes,...)
-//			// Those attributes will not be parse and not be add in the requirement class
-//			System.setProperty(AbstractOslcRdfXmlProvider.OSLC4J_STRICT_DATATYPES, "false");
-//
-//			requirement = getResponse.getEntity(CustomRequirement.class);
-//			//System.out.println(requirement.getSysmlId());
-//			// Get the eTAG, we need it to update
-//			String etag = getResponse.getHeaders().getFirst(OSLCConstants.ETAG);
-//			getResponse.consumeContent();
-//		}
+    private static void getRequirements(String queryCapability, JazzFormAuthClient client)
+            throws URISyntaxException, IOException, OAuthException {
 
-	}
-	
-	private static void createRequirement(ResourceShape featureInstanceShape, String requirementFactory, JazzFormAuthClient client) throws URISyntaxException, IOException, OAuthException {
+        OslcQueryParameters queryParams = new OslcQueryParameters();
+        // queryParams.setPrefix("dcterms=<http://purl.org/dc/terms/>");
+        // queryParams.setWhere("dcterms:sysmlid=\"123\"");
+        OslcQuery query = new OslcQuery(client, queryCapability, 10, queryParams);
+        OslcQueryResult result = query.submit();
+        boolean processAsJavaObjects = true;
+        int resultsSize = result.getMembersUrls().length;
+        processPagedQueryResults(result, client, processAsJavaObjects);
+        System.out.println("\n------------------------------\n");
+        System.out.println("Number of Results for query 1 = " + resultsSize + "\n");
+        //
+        // String requirementURL = null;
+        //
+        // if ( result != null ) {
+        // String [] returnedURLS = result.getMembersUrls();
+        // System.out.println("Printing Stuff");
+        // if (( returnedURLS != null ) && ( returnedURLS.length > 0 )) {
+        // requirementURL = returnedURLS[0];
+        // }
+        // }
+        //
+        // System.out.println(requirementURL);
+        // System.out.println("Starting getResponse");
+        // if ( requirementURL != null ) {
+        // // Get the requirement
+        // ClientResponse getResponse = client.getResource(requirementURL,
+        // OslcMediaType.APPLICATION_RDF_XML);
+        //
+        // // to handle datatype format exception (some system datetime
+        // attributes in doors, empty value in some attributes,...)
+        // // Those attributes will not be parse and not be add in the
+        // requirement class
+        // System.setProperty(AbstractOslcRdfXmlProvider.OSLC4J_STRICT_DATATYPES,
+        // "false");
+        //
+        // requirement = getResponse.getEntity(CustomRequirement.class);
+        // //System.out.println(requirement.getSysmlId());
+        // // Get the eTAG, we need it to update
+        // String etag = getResponse.getHeaders().getFirst(OSLCConstants.ETAG);
+        // getResponse.consumeContent();
+        // }
+
+    }
+
+    private static void createRequirement(ResourceShape featureInstanceShape, String requirementFactory, JazzFormAuthClient client) throws URISyntaxException, IOException, OAuthException {
         CustomRequirement requirement = null;
 
-        if (( featureInstanceShape != null ) && (requirementFactory != null ) ){
+        if ((featureInstanceShape != null) && (requirementFactory != null)) {
             // Create REQ01
             requirement = DoorsNgUtils.getNewRequirement("Req01");
             requirement.setDescription("Created By EclipseLyo");
             requirement.setSysmlId("123");
             requirement.addImplementedBy(new Link(new URI("http://google.com"), "Link in REQ01"));
-            //Create the Requirement
+            // Create the Requirement
 
-            ClientResponse creationResponse = client.createResource(
-                    requirementFactory, requirement,
-                    OslcMediaType.APPLICATION_RDF_XML,
-                    OslcMediaType.APPLICATION_RDF_XML);
+            ClientResponse creationResponse = client.createResource(requirementFactory, requirement,
+                    OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
             String url = creationResponse.getHeaders().getFirst(HttpHeaders.LOCATION);
             creationResponse.consumeContent();
-        }           
+        }
 
-	}
-	
-	private static void processPagedQueryResults(OslcQueryResult result, OslcClient client, boolean asJavaObjects) {
-		int page = 1;
-		//For now, just show first 5 pages
-		do {
-			System.out.println("\nPage " + page + ":\n");
-			processCurrentPage(result, client, asJavaObjects);
-			if (result.hasNext() && page < 5) {
-				result = result.next();
-				page++;
-			} else {
-				break;
-			}
-		} while(true);
-	}
+    }
 
-	private static void processCurrentPage(OslcQueryResult result, OslcClient client, boolean asJavaObjects) {
+    private static void processPagedQueryResults(OslcQueryResult result, OslcClient client, boolean asJavaObjects) {
+        int page = 1;
+        // For now, just show first 5 pages
+        do {
+            System.out.println("\nPage " + page + ":\n");
+            processCurrentPage(result, client, asJavaObjects);
+            if (result.hasNext() && page < 5) {
+                result = result.next();
+                page++;
+            } else {
+                break;
+            }
+        } while (true);
+    }
 
-		for (String resultsUrl : result.getMembersUrls()) {
-			System.out.println(resultsUrl);
+    private static void processCurrentPage(OslcQueryResult result, OslcClient client, boolean asJavaObjects) {
 
-			ClientResponse response = null;
-			try {
+        for (String resultsUrl : result.getMembersUrls()) {
+            System.out.println(resultsUrl);
 
-				//Get a single artifact by its URL
-				response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
+            ClientResponse response = null;
+            try {
 
-				if (response != null) {
-					//De-serialize it as a Java object
-					if (asJavaObjects) {
-						   Requirement req = response.getEntity(Requirement.class);
-						   Map<QName, Object> xreq = req.getExtendedProperties();
-						   for(QName key: xreq.keySet()) {
-							   System.out.println(String.format("%s - %s", key, xreq.get(key)));
-						   }
-						   System.out.println(String.format("%s : %s", req.getTitle(), req.getSysmlId()));
-						   //printRequirementInfo(req);   //print a few attributes
-						   //System.out.println(String.format("%s: %s", req.getIdentifier(), req.getTitle()));
-					} else {
+                // Get a single artifact by its URL
+                response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
 
-						//Just print the raw RDF/XML (or process the XML as desired)
-						processRawResponse(response);
+                if (response != null) {
+                    // De-serialize it as a Java object
+                    if (asJavaObjects) {
+                        Requirement req = response.getEntity(Requirement.class);
+                        Map<QName, Object> xreq = req.getExtendedProperties();
+                        for (QName key : xreq.keySet()) {
+                            System.out.println(String.format("%s - %s", key, xreq.get(key)));
+                        }
+                        System.out.println(String.format("%s : %s", req.getTitle(), req.getSysmlId()));
+                        // printRequirementInfo(req); //print a few attributes
+                        // System.out.println(String.format("%s: %s",
+                        // req.getIdentifier(), req.getTitle()));
+                    } else {
 
-					}
-				}
-			} catch (Exception e) {
-				logger.log(Level.SEVERE, "Unable to process artfiact at url: " + resultsUrl, e);
-			}
+                        // Just print the raw RDF/XML (or process the XML as
+                        // desired)
+                        processRawResponse(response);
 
-		}
+                    }
+                }
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Unable to process artfiact at url: " + resultsUrl, e);
+            }
 
-	}
+        }
 
-	private static void processRawResponse(ClientResponse response) throws IOException {
-		InputStream is = response.getEntity(InputStream.class);
-		BufferedReader in = new BufferedReader(new InputStreamReader(is));
+    }
 
-		String line = null;
-		while((line = in.readLine()) != null) {
-		  System.out.println(line);
-		}
-		System.out.println();
-		response.consumeContent();
-	}
+    private static void processRawResponse(ClientResponse response) throws IOException {
+        InputStream is = response.getEntity(InputStream.class);
+        BufferedReader in = new BufferedReader(new InputStreamReader(is));
 
+        String line = null;
+        while ((line = in.readLine()) != null) {
+            System.out.println(line);
+        }
+        System.out.println();
+        response.consumeContent();
+    }
 
-	private static boolean validateOptions(CommandLine cmd) {
-		boolean isValid = true;
+    private static boolean validateOptions(CommandLine cmd) {
+        boolean isValid = true;
 
-		if (! (cmd.hasOption("url") &&
-			   cmd.hasOption("user") &&
-			   cmd.hasOption("password") &&
-			   cmd.hasOption("project"))) {
+        if (!(cmd.hasOption("url") && cmd.hasOption("user") && cmd.hasOption("password") && cmd.hasOption("project"))) {
 
-			isValid = false;
-		}
-		return isValid;
-	}
+            isValid = false;
+        }
+        return isValid;
+    }
 
 }

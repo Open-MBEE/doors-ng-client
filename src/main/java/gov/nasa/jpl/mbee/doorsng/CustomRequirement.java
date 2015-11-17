@@ -47,44 +47,39 @@ import org.eclipse.lyo.client.oslc.resources.RmConstants;
 
 @OslcNamespace(RmConstants.REQUIREMENTS_MANAGEMENT_NAMESPACE)
 @OslcResourceShape(title = "Requirement Resource Shape", describes = RmConstants.TYPE_REQUIREMENT)
-public class CustomRequirement
-       extends Requirement
-{
+public class CustomRequirement extends Requirement {
     private String sysmlid;
 
-    public CustomRequirement()
-    {
+    public CustomRequirement() {
         super();
 
         // Only add the type if Requirement is the created object
-        if ( ! ( this instanceof CustomRequirementCollection ) ) {
+        if (!(this instanceof CustomRequirementCollection)) {
             addRdfType(URI.create(RmConstants.TYPE_REQUIREMENT));
         }
     }
 
-    public CustomRequirement(final URI about)
-    {
+    public CustomRequirement(final URI about) {
         super(about);
 
         // Only add the type if Requirement is the created object
-        if ( ! ( this instanceof CustomRequirementCollection ) ) {
-        	addRdfType(URI.create(RmConstants.TYPE_REQUIREMENT));
+        if (!(this instanceof CustomRequirementCollection)) {
+            addRdfType(URI.create(RmConstants.TYPE_REQUIREMENT));
         }
     }
-    
+
     @OslcDescription("Sysmlid to map back to mms.")
     @OslcOccurs(Occurs.ExactlyOne)
     @OslcPropertyDefinition("https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/__TU3sYHCEeWxYp5ZPr3Qqg")
     @OslcTitle("sysmlid")
     @OslcValueType(ValueType.String)
-    @OslcName("__TU3sYHCEeWxYp5ZPr3Qqg") // name has to match end of property definition
-    public String getSysmlId()
-    {
+    @OslcName("__TU3sYHCEeWxYp5ZPr3Qqg") // name has to match end of property
+    // definition
+    public String getSysmlId() {
         return sysmlid;
     }
 
-    public void setSysmlId(final String sysmlid)
-    {
+    public void setSysmlId(final String sysmlid) {
         this.sysmlid = sysmlid;
     }
 

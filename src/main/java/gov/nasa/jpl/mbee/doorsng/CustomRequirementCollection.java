@@ -32,31 +32,25 @@ import org.eclipse.lyo.oslc4j.core.annotation.OslcRange;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcResourceShape;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcTitle;
 
-
 @OslcNamespace(RmConstants.REQUIREMENTS_MANAGEMENT_NAMESPACE)
 @OslcResourceShape(title = "Requirement Collection Resource Shape", describes = RmConstants.TYPE_REQUIREMENT_COLLECTION)
-public final class CustomRequirementCollection
-       extends CustomRequirement
-{
+public final class CustomRequirementCollection extends CustomRequirement {
     // The only extra field is uses
-    private final Set<URI>      uses     = new TreeSet<URI>();
+    private final Set<URI> uses = new TreeSet<URI>();
 
-    public CustomRequirementCollection()
-    {
+    public CustomRequirementCollection() {
         super();
 
         addRdfType(URI.create(RmConstants.TYPE_REQUIREMENT_COLLECTION));
     }
 
-    public CustomRequirementCollection(final URI about)
-    {
+    public CustomRequirementCollection(final URI about) {
         super(about);
 
         addRdfType(URI.create(RmConstants.TYPE_REQUIREMENT_COLLECTION));
     }
 
-    public void addUses(final URI uses)
-    {
+    public void addUses(final URI uses) {
         this.uses.add(uses);
     }
 
@@ -65,17 +59,14 @@ public final class CustomRequirementCollection
     @OslcPropertyDefinition(RmConstants.REQUIREMENTS_MANAGEMENT_NAMESPACE + "uses")
     @OslcRange(RmConstants.TYPE_REQUIREMENT)
     @OslcTitle("Uses")
-    public URI[] getUses()
-    {
+    public URI[] getUses() {
         return uses.toArray(new URI[uses.size()]);
     }
 
-    public void setUses(final URI[] uses)
-    {
+    public void setUses(final URI[] uses) {
         this.uses.clear();
 
-        if (uses != null)
-        {
+        if (uses != null) {
             this.uses.addAll(Arrays.asList(uses));
         }
     }
