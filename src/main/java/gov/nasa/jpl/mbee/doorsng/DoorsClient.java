@@ -190,7 +190,7 @@ public class DoorsClient {
     }
 
     private static void createRequirement(ResourceShape featureInstanceShape, String requirementFactory, JazzFormAuthClient client) throws URISyntaxException, IOException, OAuthException {
-        CustomRequirement requirement = null;
+        Requirement requirement = null;
 
         if ((featureInstanceShape != null) && (requirementFactory != null)) {
             // Create REQ01
