@@ -22,8 +22,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Map;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -62,6 +62,7 @@ public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
     private static Properties properties = new Properties();
+
     static {
         try {
             properties.load(DoorsClient.class.getResourceAsStream("/user.properties"));
@@ -69,23 +70,25 @@ public class DoorsClient {
             throw new RuntimeException(e);
         }
     }
+
     // Following is a workaround for primaryText issue in DNG ( it is
     // PrimaryText instead of primaryText
-    private static final QName  PROPERTY_PRIMARY_TEXT_WORKAROUND = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
+    private static final QName PROPERTY_PRIMARY_TEXT_WORKAROUND = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
     private static final String SYSMLID_ID = "__TU3sYHCEeWxYp5ZPr3Qqg";
-    
+
     private static JazzFormAuthClient client;
     private static JazzRootServicesHelper helper;
     private static String requirementFactory;
+    private static String requirementCollectionFactory;
     private static String queryCapability;
-    
+
     public static void main(String[] args) throws Exception {
         execute("Test Project");
     }
-    
+
     /**
      * Login to the RRC server and perform some OSLC actions
-     * 
+     *
      * @param args
      * @throws ParseException
      */
@@ -96,44 +99,50 @@ public class DoorsClient {
         String password = properties.getProperty("service_password");
 
         boolean initSuccess = DoorsNgUtils.init(webContextUrl, user, password, projectArea);
-        if (!initSuccess)
+        if (!initSuccess) {
             return;
+        }
 
         try {
             client = DoorsNgUtils.getClient();
             helper = DoorsNgUtils.getHelper();
             requirementFactory = DoorsNgUtils.getRequirementFactory();
+            requirementCollectionFactory = DoorsNgUtils.getRequirementCollectionFactory();
             queryCapability = DoorsNgUtils.getQueryCapability();
 
             ResourceShape featureInstanceShape = DoorsNgUtils.getFeatureInstanceShape();
             ResourceShape collectionInstanceShape = DoorsNgUtils.getCollectionInstanceShape();
-            
-//            Requirement requirement = new Requirement();
-//            requirement.setTitle("Req07");
-//            requirement.setDescription("Created By EclipseLyo");
-//            requirement.setSysmlId("12345");
-//            requirement.addImplementedBy(new Link(new URI("http://google.com"), "Link in REQ01"));
-//            createRequirement(featureInstanceShape, requirementFactory, client, requirement);
 
-            getRequirements();
-            //Requirement req = getRequirement("12345");
-            //System.out.println(String.format("Title: %s\nSysmlId: %s\nDescription: %s\nCreated: %s\nModified: %s\nCreated By: %s", req.getTitle(), req.getSysmlId(), req.getDescription(), req.getCreated(), req.getModified(), Arrays.toString(req.getCreators())));
+            // Requirement requirement = new Requirement();
+            // requirement.setTitle("Req07");
+            // requirement.setDescription("Created By EclipseLyo");
+            // requirement.setSysmlId("12345");
+            // requirement.addImplementedBy(new Link(new
+            // URI("http://google.com"), "Link in REQ01"));
+            // createUpdateRequirement(featureInstanceShape, requirementFactory,
+            // client, requirement);
+
+            // getRequirements();
+            Requirement req = getRequirement("12345");
+            System.out.println(String.format("Title: %s\nSysmlId: %s\nDescription: %s\nCreated: %s\nModified: %s\nCreated By: %s", req.getTitle(), req.getSysmlId(), req.getDescription(), req.getCreated(), req.getModified(), Arrays.toString(req.getCreators())));
+            deleteRequirement(req);
         } catch (Exception e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
     }
-    
+
     private static Requirement getRequirement(String sysmlid) {
-        
+
         OslcQueryParameters queryParams = new OslcQueryParameters();
         queryParams.setPrefix("rm_property=<https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/>");
-        queryParams.setWhere("rm_property:" + SYSMLID_ID + "=\"" + sysmlid + "\"");
+        String where = String.format("rm_property:%s=\"%s\"", SYSMLID_ID, sysmlid);
+        queryParams.setWhere(where);
         OslcQuery query = new OslcQuery(client, queryCapability, 1, queryParams);
         OslcQueryResult result = query.submit();
         Requirement[] reqs = processResults(result);
-        
+
         return reqs[0];
-        
+
     }
 
     private static Requirement[] getRequirements() {
@@ -142,54 +151,71 @@ public class DoorsClient {
         OslcQuery query = new OslcQuery(client, queryCapability, 10, queryParams);
         OslcQueryResult result = query.submit();
         Requirement[] reqs = processResults(result);
-        
+
         return reqs;
 
     }
 
-    private static Boolean createRequirement(ResourceShape featureInstanceShape, Requirement requirement) throws URISyntaxException, IOException, OAuthException {
+    private static Boolean createUpdateRequirement(ResourceShape featureInstanceShape, Requirement requirement) throws URISyntaxException, IOException, OAuthException {
 
         if ((featureInstanceShape != null) && (requirement != null)) {
-            requirement.setInstanceShape( featureInstanceShape.getAbout() );
-            ClientResponse creationResponse = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-            String url = creationResponse.getHeaders().getFirst(HttpHeaders.LOCATION);
-            creationResponse.consumeContent();
-            if(url != null) {
-                
+            ClientResponse response;
+            String url = null;
+            requirement.setInstanceShape(featureInstanceShape.getAbout());
+            if (requirement.getIdentifier() == null) {
+                response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            } else {
+                response = client.updateResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            }
+            url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
+            response.consumeContent();
+            if (url != null) {
+
                 return true;
-                
+
             }
         }
 
         return false;
-        
+
     }
-    
-    private static Boolean updateRequirement(ResourceShape featureInstanceShape, Requirement requirement) throws URISyntaxException, IOException, OAuthException {
-               
-        if ((featureInstanceShape != null) && (requirement != null)) {
-            Requirement update = getRequirement(requirement.getSysmlId());
-            requirement.setIdentifier( update.getIdentifier() );
-            requirement.setInstanceShape( update.getInstanceShape() );
-            ClientResponse updateResponse = client.updateResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-            String url = updateResponse.getHeaders().getFirst(HttpHeaders.LOCATION);
-            updateResponse.consumeContent();
-            if(url != null) {
-                
+
+    private static Boolean createUpdateRequirementCollections(RequirementCollection collection) throws URISyntaxException, IOException, OAuthException {
+
+        if (collection != null) {
+            ClientResponse response;
+            if (collection.getIdentifier() == null) {
+                response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            } else {
+                response = client.updateResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            }
+            String url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
+            response.consumeContent();
+            if (url != null) {
+
                 return true;
-                
+
             }
         }
-        
+
+        return false;
+
+    }
+
+    private static Boolean deleteRequirement(Requirement requirement) {
+        if (requirement.getIdentifier() != null) {
+            System.out.println(requirement.getSubjects()[0]);
+        }
         return false;
     }
-    
+
     private static Requirement[] processResults(OslcQueryResult result) {
-        
+
         Set<Requirement> req = new HashSet<Requirement>();
-        
+
         do {
             for (String resultsUrl : result.getMembersUrls()) {
+                System.out.println(resultsUrl);
                 ClientResponse response = null;
                 try {
                     response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
@@ -211,5 +237,4 @@ public class DoorsClient {
 
         return req.toArray(new Requirement[req.size()]);
     }
-    
 }

@@ -25,6 +25,7 @@ public class DoorsNgUtils {
     private static final Logger logger = Logger.getLogger(DoorsNgUtils.class.getName());
     private static String queryCapability;
     private static String requirementFactory;
+    private static String requirementCollectionFactory;
 
     public static boolean clientLogin(String webContextUrl, String user, String password, String projectArea) {
         try {
@@ -71,6 +72,10 @@ public class DoorsNgUtils {
     public static String getRequirementFactory() {
         return requirementFactory;
     }
+    
+    public static String getRequirementCollectionFactory() {
+        return requirementCollectionFactory;
+    }
 
     public static boolean init(String webContextUrl, String user, String password, String projectArea) {
         if (!clientLogin(webContextUrl, user, password, projectArea))
@@ -82,6 +87,7 @@ public class DoorsNgUtils {
 
             queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
             requirementFactory = client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
+            requirementCollectionFactory = client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE);
             featureInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE, client, "Requirement");
             collectionInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, client, "Requirement Collection");
         } catch (Exception e) {
