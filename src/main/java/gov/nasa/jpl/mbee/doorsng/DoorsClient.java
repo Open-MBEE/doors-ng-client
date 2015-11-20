@@ -81,6 +81,8 @@ public class DoorsClient {
     private static String requirementFactory;
     private static String requirementCollectionFactory;
     private static String queryCapability;
+    private static ResourceShape featureInstanceShape;
+    private static ResourceShape collectionInstanceShape;
 
     public static void main(String[] args) throws Exception {
         execute("Test Project");
@@ -109,23 +111,24 @@ public class DoorsClient {
             requirementFactory = DoorsNgUtils.getRequirementFactory();
             requirementCollectionFactory = DoorsNgUtils.getRequirementCollectionFactory();
             queryCapability = DoorsNgUtils.getQueryCapability();
+            featureInstanceShape = DoorsNgUtils.getFeatureInstanceShape();
+            collectionInstanceShape = DoorsNgUtils.getCollectionInstanceShape();
 
-            ResourceShape featureInstanceShape = DoorsNgUtils.getFeatureInstanceShape();
-            ResourceShape collectionInstanceShape = DoorsNgUtils.getCollectionInstanceShape();
-
-            // Requirement requirement = new Requirement();
-            // requirement.setTitle("Req07");
-            // requirement.setDescription("Created By EclipseLyo");
-            // requirement.setSysmlId("12345");
-            // requirement.addImplementedBy(new Link(new
-            // URI("http://google.com"), "Link in REQ01"));
-            // createUpdateRequirement(featureInstanceShape, requirementFactory,
-            // client, requirement);
+            Requirement requirement = new Requirement();
+            requirement.setTitle("Req10");
+            requirement.setDescription("Created By EclipseLyo");
+            requirement.setSysmlId("123-456-789");
+            // requirement.addImplementedBy();
+            createUpdate(requirement);
 
             // getRequirements();
-            Requirement req = getRequirement("12345");
-            System.out.println(String.format("Title: %s\nSysmlId: %s\nDescription: %s\nCreated: %s\nModified: %s\nCreated By: %s", req.getTitle(), req.getSysmlId(), req.getDescription(), req.getCreated(), req.getModified(), Arrays.toString(req.getCreators())));
-            deleteRequirement(req);
+            // Requirement req = getRequirement("12345");
+            // System.out.println(String.format("Title: %s\nSysmlId:
+            // %s\nDescription: %s\nCreated: %s\nModified: %s\nCreated By: %s",
+            // req.getTitle(), req.getSysmlId(), req.getDescription(),
+            // req.getCreated(), req.getModified(),
+            // Arrays.toString(req.getCreators())));
+            // deleteRequirement(req);
         } catch (Exception e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
@@ -139,7 +142,7 @@ public class DoorsClient {
         queryParams.setWhere(where);
         OslcQuery query = new OslcQuery(client, queryCapability, 1, queryParams);
         OslcQueryResult result = query.submit();
-        Requirement[] reqs = processResults(result);
+        Requirement[] reqs = processRequirements(result);
 
         return reqs[0];
 
@@ -150,15 +153,40 @@ public class DoorsClient {
         OslcQueryParameters queryParams = new OslcQueryParameters();
         OslcQuery query = new OslcQuery(client, queryCapability, 10, queryParams);
         OslcQueryResult result = query.submit();
-        Requirement[] reqs = processResults(result);
+        Requirement[] reqs = processRequirements(result);
 
         return reqs;
 
     }
 
-    private static Boolean createUpdateRequirement(ResourceShape featureInstanceShape, Requirement requirement) throws URISyntaxException, IOException, OAuthException {
+    private static RequirementCollection getRequirementCollection(String sysmlid) {
 
-        if ((featureInstanceShape != null) && (requirement != null)) {
+        OslcQueryParameters queryParams = new OslcQueryParameters();
+        queryParams.setPrefix("rm_property=<https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/>");
+        String where = String.format("rm_property:%s=\"%s\"", SYSMLID_ID, sysmlid);
+        queryParams.setWhere(where);
+        OslcQuery query = new OslcQuery(client, queryCapability, 1, queryParams);
+        OslcQueryResult result = query.submit();
+        RequirementCollection[] reqs = processRequirementCollections(result);
+
+        return reqs[0];
+
+    }
+
+    private static RequirementCollection[] getRequirementCollections() {
+
+        OslcQueryParameters queryParams = new OslcQueryParameters();
+        OslcQuery query = new OslcQuery(client, queryCapability, 10, queryParams);
+        OslcQueryResult result = query.submit();
+        RequirementCollection[] reqs = processRequirementCollections(result);
+
+        return reqs;
+
+    }
+
+    private static Boolean createUpdate(Requirement requirement) throws URISyntaxException, IOException, OAuthException {
+
+        if ((requirement != null)) {
             ClientResponse response;
             String url = null;
             requirement.setInstanceShape(featureInstanceShape.getAbout());
@@ -180,7 +208,7 @@ public class DoorsClient {
 
     }
 
-    private static Boolean createUpdateRequirementCollections(RequirementCollection collection) throws URISyntaxException, IOException, OAuthException {
+    private static Boolean createUpdate(RequirementCollection collection) throws URISyntaxException, IOException, OAuthException {
 
         if (collection != null) {
             ClientResponse response;
@@ -202,14 +230,29 @@ public class DoorsClient {
 
     }
 
-    private static Boolean deleteRequirement(Requirement requirement) {
+    private static Boolean delete(Requirement requirement) throws URISyntaxException, IOException, OAuthException {
         if (requirement.getIdentifier() != null) {
-            System.out.println(requirement.getSubjects()[0]);
+            String[] subject = requirement.getSubjects();
+            System.out.println(subject[subject.length - 1]);
+            client.deleteResource(subject[subject.length - 1]);
         }
         return false;
     }
 
-    private static Requirement[] processResults(OslcQueryResult result) {
+    private static Boolean delete(RequirementCollection requirementCollection) throws URISyntaxException, IOException, OAuthException {
+        if (requirementCollection.getIdentifier() != null) {
+            String[] subject = requirementCollection.getSubjects();
+            System.out.println(subject[subject.length - 1]);
+            client.deleteResource(subject[subject.length - 1]);
+        }
+        return false;
+    }
+
+    private static Link linkRequirement(Requirement requirement) throws URISyntaxException {
+        return new Link(new URI(requirement.getSubjects()[requirement.getSubjects().length - 1]), requirement.getTitle());
+    }
+
+    private static Requirement[] processRequirements(OslcQueryResult result) {
 
         Set<Requirement> req = new HashSet<Requirement>();
 
@@ -221,7 +264,9 @@ public class DoorsClient {
                     response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
 
                     if (response != null) {
-                        req.add(response.getEntity(Requirement.class));
+                        Requirement res = response.getEntity(Requirement.class);
+                        res.addSubject(resultsUrl);
+                        req.add(res);
                     }
                 } catch (Exception e) {
                     logger.log(Level.SEVERE, "Unable to process artfiact at url: " + resultsUrl, e);
@@ -236,5 +281,36 @@ public class DoorsClient {
         } while (true);
 
         return req.toArray(new Requirement[req.size()]);
+    }
+
+    private static RequirementCollection[] processRequirementCollections(OslcQueryResult result) {
+
+        Set<RequirementCollection> req = new HashSet<RequirementCollection>();
+
+        do {
+            for (String resultsUrl : result.getMembersUrls()) {
+                System.out.println(resultsUrl);
+                ClientResponse response = null;
+                try {
+                    response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
+
+                    if (response != null) {
+                        RequirementCollection res = response.getEntity(RequirementCollection.class);
+                        res.addSubject(resultsUrl);
+                        req.add(res);
+                    }
+                } catch (Exception e) {
+                    logger.log(Level.SEVERE, "Unable to process artfiact at url: " + resultsUrl, e);
+                }
+
+            }
+            if (result.hasNext()) {
+                result = result.next();
+            } else {
+                break;
+            }
+        } while (true);
+
+        return req.toArray(new RequirementCollection[req.size()]);
     }
 }
