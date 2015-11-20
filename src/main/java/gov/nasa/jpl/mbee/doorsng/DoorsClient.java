@@ -65,7 +65,7 @@ public class DoorsClient {
 
     static {
         try {
-            properties.load(DoorsClient.class.getResourceAsStream("/user.properties"));
+            properties.load(DoorsClient.class.getResourceAsStream("/users.properties"));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
