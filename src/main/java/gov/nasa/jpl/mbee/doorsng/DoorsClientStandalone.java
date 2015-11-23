@@ -14,29 +14,29 @@ public class DoorsClientStandalone {
 
     private static final Logger logger = Logger.getLogger(DoorsClientStandalone.class.getName());
 
-	public static void main(String[] args) throws ParseException {
+    public static void main(String[] args) throws ParseException {
 
-		Options options = new Options();
+        Options options = new Options();
 
-		options.addOption("action", true, "action");
+        options.addOption("action", true, "action");
         options.addOption("requirement", true, "requirement");
         options.addOption("collection", true, "collection");
-		options.addOption("project",true,"project area");
+        options.addOption("project",true,"project area");
 
-		CommandLineParser cliParser = new GnuParser();
+        CommandLineParser cliParser = new GnuParser();
 
-		CommandLine cmd = cliParser.parse(options, args);
+        CommandLine cmd = cliParser.parse(options, args);
 
-		if (!validateOptions(cmd)) {
-			logger.severe("Syntax:  java <class_name> (-requirement <json> || -collection <collection>) -project \"<project_area>\"");
-			logger.severe("Example: java DoorsClientStandalone.class -requirement {\"sysmlid\":\"123-456-678\"} -collection {\"title\":\"something\",\"sysmlids\": [\"123-456-789\",\"987-654-321\"]} -project \"Test Project\"");
-			return;
-		}
+        if (!validateOptions(cmd)) {
+            logger.severe("Syntax:  java <class_name> (-requirement <json> || -collection <collection>) -project \"<project_area>\"");
+            logger.severe("Example: java DoorsClientStandalone.class -requirement {\"sysmlid\":\"123-456-678\"} -collection {\"title\":\"something\",\"sysmlids\": [\"123-456-789\",\"987-654-321\"]} -project \"Test Project\"");
+            return;
+        }
 
-		String action = cmd.getOptionValue("action");
-		String requirement = cmd.getOptionValue("requirement");
-		String collection = cmd.getOptionValue("collection");
-		String projectArea = cmd.getOptionValue("project");
+        String action = cmd.getOptionValue("action");
+        String requirement = cmd.getOptionValue("requirement");
+        String collection = cmd.getOptionValue("collection");
+        String projectArea = cmd.getOptionValue("project");
 
         ObjectMapper mapper = new ObjectMapper();
         String response = "";
@@ -75,21 +75,21 @@ public class DoorsClientStandalone {
                 }
             }
         } catch (Exception e) {
-			logger.log(Level.SEVERE, e.getMessage(), e);
-		} finally {
+            logger.log(Level.SEVERE, e.getMessage(), e);
+        } finally {
             System.out.println(response);
         }
 
     }
 
-	private static boolean validateOptions(CommandLine cmd) {
-		if (cmd.hasOption("action") && cmd.hasOption("project") && (cmd.hasOption("requirement") || cmd.hasOption("collection"))) {
+    private static boolean validateOptions(CommandLine cmd) {
+        if (cmd.hasOption("action") && cmd.hasOption("project") && (cmd.hasOption("requirement") || cmd.hasOption("collection"))) {
 
-			return true;
+            return true;
 
-		}
+        }
 
-		return false;
+        return false;
 
-	}
+    }
 }
