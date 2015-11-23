@@ -35,10 +35,13 @@ import org.eclipse.lyo.client.oslc.resources.RmConstants;
 
 @OslcNamespace(RmConstants.REQUIREMENTS_MANAGEMENT_NAMESPACE)
 @OslcResourceShape(title = "Requirement Resource Shape", describes = RmConstants.TYPE_REQUIREMENT)
-public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requirement {
+public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requirement
+{
     
     private final Set<URI>    rdfTypes                  = new TreeSet<URI>();
     private String            sysmlid;
+    private String            resourceUrl;
+    private String            eTag;
     
     public Requirement()
     {
@@ -67,12 +70,28 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
     @OslcValueType(ValueType.String)
     @OslcName("__TU3sYHCEeWxYp5ZPr3Qqg") // name has to match end of property
     // definition
-    public String getSysmlId() {
+    public String getSysmlid() {
         return sysmlid;
     }
 
-    public void setSysmlId(final String sysmlid) {
+    public void setSysmlid(final String sysmlid) {
         this.sysmlid = sysmlid;
+    }
+
+    public String getResourceUrl() {
+        return resourceUrl;
+    }
+
+    public void setResourceUrl(final String resourceUrl) {
+        this.resourceUrl = resourceUrl;
+    }
+
+    public String getEtag() {
+        return eTag;
+    }
+
+    public void setEtag(final String eTag) {
+        this.eTag = eTag;
     }
 
 }

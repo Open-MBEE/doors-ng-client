@@ -24,6 +24,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -71,10 +72,12 @@ public class DoorsClient {
         }
     }
 
-    // Following is a workaround for primaryText issue in DNG ( it is
-    // PrimaryText instead of primaryText
     private static final QName PROPERTY_PRIMARY_TEXT_WORKAROUND = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
     private static final String SYSMLID_ID = "__TU3sYHCEeWxYp5ZPr3Qqg";
+
+    private static final String webContextUrl = properties.getProperty("url");
+    private static final String user = properties.getProperty("service_account");
+    private static final String password = properties.getProperty("service_password");
 
     private static JazzFormAuthClient client;
     private static JazzRootServicesHelper helper;
@@ -84,23 +87,8 @@ public class DoorsClient {
     private static ResourceShape featureInstanceShape;
     private static ResourceShape collectionInstanceShape;
 
-    public static void main(String[] args) throws Exception {
-        execute("Test Project");
-    }
-
-    /**
-     * Login to the RRC server and perform some OSLC actions
-     *
-     * @param args
-     * @throws ParseException
-     */
-    public static void execute(String projectArea) throws Exception {
-
-        String webContextUrl = properties.getProperty("url");
-        String user = properties.getProperty("service_account");
-        String password = properties.getProperty("service_password");
-
-        boolean initSuccess = DoorsNgUtils.init(webContextUrl, user, password, projectArea);
+    public DoorsClient(String projectArea) {
+        Boolean initSuccess = DoorsNgUtils.init(webContextUrl, user, password, projectArea);
         if (!initSuccess) {
             return;
         }
@@ -113,159 +101,191 @@ public class DoorsClient {
             queryCapability = DoorsNgUtils.getQueryCapability();
             featureInstanceShape = DoorsNgUtils.getFeatureInstanceShape();
             collectionInstanceShape = DoorsNgUtils.getCollectionInstanceShape();
-
-            Requirement requirement = new Requirement();
-            requirement.setTitle("Req10");
-            requirement.setDescription("Created By EclipseLyo");
-            requirement.setSysmlId("123-456-789");
-            // requirement.addImplementedBy();
-            createUpdate(requirement);
-
-            // getRequirements();
-            // Requirement req = getRequirement("12345");
-            // System.out.println(String.format("Title: %s\nSysmlId:
-            // %s\nDescription: %s\nCreated: %s\nModified: %s\nCreated By: %s",
-            // req.getTitle(), req.getSysmlId(), req.getDescription(),
-            // req.getCreated(), req.getModified(),
-            // Arrays.toString(req.getCreators())));
-            // deleteRequirement(req);
         } catch (Exception e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
     }
 
-    private static Requirement getRequirement(String sysmlid) {
+    public Requirement getRequirement(String sysmlid) {
 
-        OslcQueryParameters queryParams = new OslcQueryParameters();
-        queryParams.setPrefix("rm_property=<https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/>");
-        String where = String.format("rm_property:%s=\"%s\"", SYSMLID_ID, sysmlid);
-        queryParams.setWhere(where);
-        OslcQuery query = new OslcQuery(client, queryCapability, 1, queryParams);
-        OslcQueryResult result = query.submit();
+        Map<String, String> params = new HashMap<>();
+        params.put("sysmlid", sysmlid);
+
+        OslcQueryResult result = getQuery(params);
         Requirement[] reqs = processRequirements(result);
 
-        return reqs[0];
+        return reqs.length > 0 ? reqs[reqs.length - 1] : new Requirement();
 
     }
 
-    private static Requirement[] getRequirements() {
+    public Requirement[] getRequirements() {
 
-        OslcQueryParameters queryParams = new OslcQueryParameters();
-        OslcQuery query = new OslcQuery(client, queryCapability, 10, queryParams);
-        OslcQueryResult result = query.submit();
+        Map<String, String> params = new HashMap<>();
+
+        OslcQueryResult result = getQuery(params);
         Requirement[] reqs = processRequirements(result);
 
         return reqs;
 
     }
 
-    private static RequirementCollection getRequirementCollection(String sysmlid) {
+    public RequirementCollection getRequirementCollection(String title) {
+
+        Map<String, String> params = new HashMap<>();
+        params.put("title", title);
+
+        OslcQueryResult result = getQuery(params);
+        RequirementCollection[] cols = processRequirementCollections(result);
+
+        return cols.length > 0 ? cols[cols.length - 1] : new RequirementCollection();
+
+    }
+
+    public RequirementCollection[] getRequirementCollections() {
+
+        Map<String, String> params = new HashMap<>();
+
+        OslcQueryResult result = getQuery(params);
+        RequirementCollection[] cols = processRequirementCollections(result);
+
+        return cols;
+
+    }
+
+    public Boolean createUpdate(Requirement requirement) throws URISyntaxException, IOException, OAuthException {
+
+        Requirement check = getRequirement(requirement.getSysmlid());
+        ClientResponse response;
+        Integer status = null;
+
+        requirement.setInstanceShape(featureInstanceShape.getAbout());
+
+        if (check.getResourceUrl() == null) {
+            response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            status = response.getStatusCode();
+        } else {
+            response = client.updateResource(check.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            status = response.getStatusCode();
+        }
+        response.consumeContent();
+        if (status == 200) {
+
+            return true;
+
+        }
+
+        return false;
+
+    }
+
+    public Boolean createUpdate(RequirementCollection collection) throws URISyntaxException, IOException, OAuthException {
+
+        RequirementCollection check = getRequirementCollection(collection.getTitle());
+        ClientResponse response;
+        Integer status = null;
+
+        collection.setInstanceShape(collectionInstanceShape.getAbout());
+
+        if (collection.getResourceUrl() == null) {
+            for (String sysmlid : collection.getSysmlids()) {
+                Requirement req = getRequirement(sysmlid);
+                collection.addUses(new URI(req.getResourceUrl()));
+            }
+            response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            status = response.getStatusCode();
+        } else {
+            collection.clearUses();
+            for (String sysmlid : collection.getSysmlids()) {
+                Requirement req = getRequirement(sysmlid);
+                collection.addUses(new URI(req.getResourceUrl()));
+            }
+            response = client.updateResource(check.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            status = response.getStatusCode();
+        }
+        response.consumeContent();
+        if (status == 200) {
+
+            return true;
+
+        }
+
+        return false;
+
+    }
+
+    public Boolean delete(Requirement requirement) throws URISyntaxException, IOException, OAuthException {
+
+        Requirement check = getRequirement(requirement.getSysmlid());
+
+        if (check.getIdentifier() != null) {
+            client.deleteResource(check.getResourceUrl());
+
+            return true;
+
+        }
+
+        return false;
+
+    }
+
+    public Boolean delete(RequirementCollection collection) throws URISyntaxException, IOException, OAuthException {
+
+        RequirementCollection check = getRequirementCollection(collection.getIdentifier());
+
+        if (collection.getIdentifier() != null) {
+            client.deleteResource(collection.getResourceUrl());
+
+            return true;
+
+        }
+
+        return false;
+
+    }
+
+    public static Link linkRequirement(Requirement requirement) throws URISyntaxException {
+        return new Link(new URI(requirement.getResourceUrl()), requirement.getTitle());
+    }
+
+    private OslcQueryResult getQuery(Map<String, String> params) {
 
         OslcQueryParameters queryParams = new OslcQueryParameters();
-        queryParams.setPrefix("rm_property=<https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/>");
-        String where = String.format("rm_property:%s=\"%s\"", SYSMLID_ID, sysmlid);
+        String prefix = "";
+        String where = "";
+
+        if (params.get("sysmlid") != null) {
+            prefix = "rm_property=<https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/>";
+            where = String.format("rm_property:%s=\"%s\"", SYSMLID_ID, params.get("sysmlid"));
+        } else if (params.get("name") != null) {
+            prefix = "dcterms=<http://purl.org/dc/terms/>";
+            where = String.format("dcterms:title=\"%s\"", params.get("name"));
+        }
+
+        queryParams.setPrefix(prefix);
         queryParams.setWhere(where);
-        OslcQuery query = new OslcQuery(client, queryCapability, 1, queryParams);
+
+        OslcQuery query = new OslcQuery(client, queryCapability, 5, queryParams);
         OslcQueryResult result = query.submit();
-        RequirementCollection[] reqs = processRequirementCollections(result);
 
-        return reqs[0];
+        return result;
 
-    }
-
-    private static RequirementCollection[] getRequirementCollections() {
-
-        OslcQueryParameters queryParams = new OslcQueryParameters();
-        OslcQuery query = new OslcQuery(client, queryCapability, 10, queryParams);
-        OslcQueryResult result = query.submit();
-        RequirementCollection[] reqs = processRequirementCollections(result);
-
-        return reqs;
-
-    }
-
-    private static Boolean createUpdate(Requirement requirement) throws URISyntaxException, IOException, OAuthException {
-
-        if ((requirement != null)) {
-            ClientResponse response;
-            String url = null;
-            requirement.setInstanceShape(featureInstanceShape.getAbout());
-            if (requirement.getIdentifier() == null) {
-                response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-            } else {
-                response = client.updateResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-            }
-            url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
-            response.consumeContent();
-            if (url != null) {
-
-                return true;
-
-            }
-        }
-
-        return false;
-
-    }
-
-    private static Boolean createUpdate(RequirementCollection collection) throws URISyntaxException, IOException, OAuthException {
-
-        if (collection != null) {
-            ClientResponse response;
-            if (collection.getIdentifier() == null) {
-                response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-            } else {
-                response = client.updateResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-            }
-            String url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
-            response.consumeContent();
-            if (url != null) {
-
-                return true;
-
-            }
-        }
-
-        return false;
-
-    }
-
-    private static Boolean delete(Requirement requirement) throws URISyntaxException, IOException, OAuthException {
-        if (requirement.getIdentifier() != null) {
-            String[] subject = requirement.getSubjects();
-            System.out.println(subject[subject.length - 1]);
-            client.deleteResource(subject[subject.length - 1]);
-        }
-        return false;
-    }
-
-    private static Boolean delete(RequirementCollection requirementCollection) throws URISyntaxException, IOException, OAuthException {
-        if (requirementCollection.getIdentifier() != null) {
-            String[] subject = requirementCollection.getSubjects();
-            System.out.println(subject[subject.length - 1]);
-            client.deleteResource(subject[subject.length - 1]);
-        }
-        return false;
-    }
-
-    private static Link linkRequirement(Requirement requirement) throws URISyntaxException {
-        return new Link(new URI(requirement.getSubjects()[requirement.getSubjects().length - 1]), requirement.getTitle());
     }
 
     private static Requirement[] processRequirements(OslcQueryResult result) {
 
         Set<Requirement> req = new HashSet<Requirement>();
 
-        do {
+        //do {
             for (String resultsUrl : result.getMembersUrls()) {
-                System.out.println(resultsUrl);
                 ClientResponse response = null;
                 try {
                     response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
+                    String etag = response.getHeaders().getFirst(OSLCConstants.ETAG);
 
                     if (response != null) {
                         Requirement res = response.getEntity(Requirement.class);
-                        res.addSubject(resultsUrl);
+                        res.setResourceUrl(resultsUrl);
+                        res.setEtag(etag);
                         req.add(res);
                     }
                 } catch (Exception e) {
@@ -276,27 +296,29 @@ public class DoorsClient {
             if (result.hasNext()) {
                 result = result.next();
             } else {
-                break;
+                //break;
             }
-        } while (true);
+         //} while (true);
 
         return req.toArray(new Requirement[req.size()]);
+
     }
 
     private static RequirementCollection[] processRequirementCollections(OslcQueryResult result) {
 
         Set<RequirementCollection> req = new HashSet<RequirementCollection>();
 
-        do {
+        //do {
             for (String resultsUrl : result.getMembersUrls()) {
-                System.out.println(resultsUrl);
                 ClientResponse response = null;
                 try {
                     response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
+                    String etag = response.getHeaders().getFirst(OSLCConstants.ETAG);
 
                     if (response != null) {
                         RequirementCollection res = response.getEntity(RequirementCollection.class);
-                        res.addSubject(resultsUrl);
+                        res.setResourceUrl(resultsUrl);
+                        res.setEtag(etag);
                         req.add(res);
                     }
                 } catch (Exception e) {
@@ -307,10 +329,23 @@ public class DoorsClient {
             if (result.hasNext()) {
                 result = result.next();
             } else {
-                break;
+                //break;
             }
-        } while (true);
+          //} while (true);
 
         return req.toArray(new RequirementCollection[req.size()]);
+
+    }
+
+    private static void processRawResponse(ClientResponse response) throws IOException {
+        InputStream is = response.getEntity(InputStream.class);
+        BufferedReader in = new BufferedReader(new InputStreamReader(is));
+
+        String line = null;
+        while ((line = in.readLine()) != null) {
+            System.out.println(line);
+        }
+        System.out.println();
+        response.consumeContent();
     }
 }
