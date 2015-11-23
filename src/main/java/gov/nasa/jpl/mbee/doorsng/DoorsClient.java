@@ -243,10 +243,6 @@ public class DoorsClient {
 
     }
 
-    public static Link linkRequirement(Requirement requirement) throws URISyntaxException {
-        return new Link(new URI(requirement.getResourceUrl()), requirement.getTitle());
-    }
-
     private OslcQueryResult getQuery(Map<String, String> params) {
 
         OslcQueryParameters queryParams = new OslcQueryParameters();
@@ -269,6 +265,10 @@ public class DoorsClient {
 
         return result;
 
+    }
+
+    public static Link linkRequirement(Requirement requirement) throws URISyntaxException {
+        return new Link(new URI(requirement.getResourceUrl()), requirement.getTitle());
     }
 
     private static Requirement[] processRequirements(OslcQueryResult result) {
