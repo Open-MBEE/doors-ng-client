@@ -23,9 +23,9 @@
       <version>1.3.2</version>
     </dependency>
     <dependency>
-	  <groupId>com.fasterxml.jackson.core</groupId>
-	  <artifactId>jackson-databind</artifactId>
-	  <version>2.6.3</version>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.6.3</version>
     </dependency>
     <dependency>
       <groupId>commons-cli</groupId>
@@ -44,21 +44,21 @@
           <target>1.7</target>
         </configuration>
       </plugin>
-	  <plugin>
-		<groupId>org.apache.maven.plugins</groupId>
-		<artifactId>maven-assembly-plugin</artifactId>
-		<version>2.5.4</version>
-		<configuration>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>2.5.4</version>
+        <configuration>
           <descriptorRefs>
             <descriptorRef>jar-with-dependencies</descriptorRef>
           </descriptorRefs>
-		  <archive>
+          <archive>
             <manifest>
-			  <mainClass>gov.nasa.jpl.mbee.doorsng.DoorsClientStandalone</mainClass>
+              <mainClass>gov.nasa.jpl.mbee.doorsng.DoorsClientStandalone</mainClass>
               <addClasspath>true</addClasspath>
-			</manifest>
-		  </archive>
-		</configuration>
+            </manifest>
+          </archive>
+        </configuration>
         <executions>
           <execution>
             <phase>package</phase>
@@ -67,7 +67,7 @@
             </goals>
           </execution>
         </executions>
-	  </plugin>
+      </plugin>
     </plugins>
   </build>
 </project>
