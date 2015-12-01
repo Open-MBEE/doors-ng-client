@@ -279,19 +279,35 @@ public class DoorsClient {
 
     }
 
-    public String createFolder(String name, String description) {
+    public String createFolder(Folder folder) {
 
-        String xml = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:oslc=\"http://open-services.net/ns/core\" xmlns:nav=\"http://jazz.net/ns/rm/navigation\" xmlns:calm=\"http://jazz.net/xmlns/prod/jazz/calm/1.0/\"><nav:folder rdf:about=\"\"><dcterms:title>" + name + "</dcterms:title> <dcterms:description>" + description + "</dcterms:description><nav:parent rdf:resource=\"" + folderQuery + "\"/></nav:folder></rdf:RDF>";
+        //String xml = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:oslc=\"http://open-services.net/ns/core\" xmlns:nav=\"http://jazz.net/ns/rm/navigation\" xmlns:calm=\"http://jazz.net/xmlns/prod/jazz/calm/1.0/\"><nav:folder rdf:about=\"\"><dcterms:title>" + name + "</dcterms:title> <dcterms:description>" + description + "</dcterms:description><nav:parent rdf:resource=\"" + folderQuery + "\"/></nav:folder></rdf:RDF>";
+
+        if (folder.getParent() != null) {
+            try {
+                folder.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(folder.getParent()));
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, e.getMessage(), e);
+            }
+        } else {
+            try {
+                folder.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(folderQuery));
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, e.getMessage(), e);
+            }
+        }
 
         try {
-            ClientResponse response = client.createResource(folderFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            ClientResponse response = client.createResource(folderFactory, folder, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
             if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
+
         return null;
+
     }
 
     private OslcQueryResult getQuery(Map<String, String> params) {

@@ -76,8 +76,10 @@ public class DoorsClientStandalone {
                     response = mapper.writeValueAsString(doors.delete(reqCol));
                 }
             } else if (folder != null) {
+                Folder fold = mapper.readValue(folder, Folder.class);
+
                 if ("create".equals(action)) {
-                    response = mapper.writeValueAsString(doors.createFolder("My New Automatic Folder", ""));
+                    response = mapper.writeValueAsString(doors.createFolder(fold));
                 }
             }
         } catch (Exception e) {
