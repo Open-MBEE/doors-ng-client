@@ -42,6 +42,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
     private String            sysmlid;
     private String            resourceUrl;
     private String            eTag;
+    private String            parent;
     
     public Requirement()
     {
@@ -68,14 +69,21 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
     @OslcPropertyDefinition("https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/__TU3sYHCEeWxYp5ZPr3Qqg")
     @OslcTitle("sysmlid")
     @OslcValueType(ValueType.String)
-    @OslcName("__TU3sYHCEeWxYp5ZPr3Qqg") // name has to match end of property
-    // definition
+    @OslcName("__TU3sYHCEeWxYp5ZPr3Qqg") // name has to match end of property definition
     public String getSysmlid() {
         return sysmlid;
     }
 
     public void setSysmlid(final String sysmlid) {
         this.sysmlid = sysmlid;
+    }
+
+    public String getParent() {
+        return parent;
+    }
+
+    public void setParent(final String parent) {
+        this.parent = parent;
     }
 
     public String getResourceUrl() {

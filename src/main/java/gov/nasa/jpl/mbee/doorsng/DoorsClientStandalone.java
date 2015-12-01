@@ -21,6 +21,7 @@ public class DoorsClientStandalone {
         options.addOption("action", true, "action");
         options.addOption("requirement", true, "requirement");
         options.addOption("collection", true, "collection");
+        options.addOption("folder", true, "folder");
         options.addOption("project",true,"project area");
 
         CommandLineParser cliParser = new GnuParser();
@@ -28,7 +29,7 @@ public class DoorsClientStandalone {
         CommandLine cmd = cliParser.parse(options, args);
 
         if (!validateOptions(cmd)) {
-            logger.severe("Syntax:  java <class_name> (-requirement <json> || -collection <collection>) -project \"<project_area>\"");
+            logger.severe("Syntax:  java <class_name> (-requirement <json> || -collection <collection> || -folder <folder>) -project \"<project_area>\"");
             logger.severe("Example: java DoorsClientStandalone.class -requirement {\"sysmlid\":\"123-456-678\"} -collection {\"title\":\"something\",\"sysmlids\": [\"123-456-789\",\"987-654-321\"]} -project \"Test Project\"");
             return;
         }
@@ -36,6 +37,7 @@ public class DoorsClientStandalone {
         String action = cmd.getOptionValue("action");
         String requirement = cmd.getOptionValue("requirement");
         String collection = cmd.getOptionValue("collection");
+        String folder = cmd.getOptionValue("folder");
         String projectArea = cmd.getOptionValue("project");
 
         ObjectMapper mapper = new ObjectMapper();
@@ -73,6 +75,10 @@ public class DoorsClientStandalone {
                 } else if ("delete".equals(action)) {
                     response = mapper.writeValueAsString(doors.delete(reqCol));
                 }
+            } else if (folder != null) {
+                if ("create".equals(action)) {
+                    response = mapper.writeValueAsString(doors.createFolder("My New Automatic Folder", ""));
+                }
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
@@ -83,7 +89,7 @@ public class DoorsClientStandalone {
     }
 
     private static boolean validateOptions(CommandLine cmd) {
-        if (cmd.hasOption("action") && cmd.hasOption("project") && (cmd.hasOption("requirement") || cmd.hasOption("collection"))) {
+        if (cmd.hasOption("action") && cmd.hasOption("project") && (cmd.hasOption("requirement") || cmd.hasOption("collection") || cmd.hasOption("folder"))) {
 
             return true;
 

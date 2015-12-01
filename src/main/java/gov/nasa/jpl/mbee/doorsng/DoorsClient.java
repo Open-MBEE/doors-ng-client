@@ -32,11 +32,23 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.namespace.QName;
+import javax.ws.rs.core.Response.Status;
 
 import net.oauth.OAuthException;
 
+import org.apache.http.HttpStatus;
 import org.apache.http.HttpHeaders;
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.RedirectStrategy;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
+import org.apache.http.protocol.HttpContext;
+import org.apache.wink.client.ClientConfig;
 import org.apache.wink.client.ClientResponse;
+import org.apache.wink.client.RestClient;
+import org.apache.wink.client.httpclient.ApacheHttpClientConfig;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
 import org.eclipse.lyo.client.oslc.OslcClient;
 import org.eclipse.lyo.client.oslc.jazz.JazzFormAuthClient;
@@ -84,6 +96,8 @@ public class DoorsClient {
     private static String requirementFactory;
     private static String requirementCollectionFactory;
     private static String queryCapability;
+    private static String folderQuery;
+    private static String folderFactory;
     private static ResourceShape featureInstanceShape;
     private static ResourceShape collectionInstanceShape;
 
@@ -99,6 +113,8 @@ public class DoorsClient {
             requirementFactory = DoorsNgUtils.getRequirementFactory();
             requirementCollectionFactory = DoorsNgUtils.getRequirementCollectionFactory();
             queryCapability = DoorsNgUtils.getQueryCapability();
+            folderQuery = DoorsNgUtils.getFolderQuery();
+            folderFactory = DoorsNgUtils.getFolderFactory();
             featureInstanceShape = DoorsNgUtils.getFeatureInstanceShape();
             collectionInstanceShape = DoorsNgUtils.getCollectionInstanceShape();
         } catch (Exception e) {
@@ -152,33 +168,45 @@ public class DoorsClient {
 
     }
 
-    public Boolean createUpdate(Requirement requirement) throws URISyntaxException, IOException, OAuthException {
+    public String createUpdate(Requirement requirement) {
 
         Requirement check = getRequirement(requirement.getSysmlid());
         ClientResponse response;
         Integer status = null;
 
         requirement.setInstanceShape(featureInstanceShape.getAbout());
+        System.out.println(check.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER));
 
-        if (check.getResourceUrl() == null) {
-            response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-            status = response.getStatusCode();
-        } else {
-            response = client.updateResource(check.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
-            status = response.getStatusCode();
+        if (requirement.getParent() != null) {
+            try {
+                requirement.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(requirement.getParent()));
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, e.getMessage(), e);
+            }
         }
-        response.consumeContent();
-        if (status == 200) {
+        System.out.println(requirement.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER));
 
-            return true;
-
+        try {
+            if (check.getResourceUrl() == null) {
+                response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+                if(response.getStatusCode() == HttpStatus.SC_CREATED) {
+                    return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+                }
+            } else {
+                response = client.updateResource(check.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+                if(response.getStatusCode() == HttpStatus.SC_OK) {
+                    return check.getResourceUrl();
+                }
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
         }
 
-        return false;
+        return null;
 
     }
 
-    public Boolean createUpdate(RequirementCollection collection) throws URISyntaxException, IOException, OAuthException {
+    public String createUpdate(RequirementCollection collection) {
 
         RequirementCollection check = getRequirementCollection(collection.getTitle());
         ClientResponse response;
@@ -186,61 +214,84 @@ public class DoorsClient {
 
         collection.setInstanceShape(collectionInstanceShape.getAbout());
 
-        if (collection.getResourceUrl() == null) {
-            for (String sysmlid : collection.getSysmlids()) {
-                Requirement req = getRequirement(sysmlid);
-                collection.addUses(new URI(req.getResourceUrl()));
-            }
-            response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-            status = response.getStatusCode();
-        } else {
+        try {
             collection.clearUses();
             for (String sysmlid : collection.getSysmlids()) {
                 Requirement req = getRequirement(sysmlid);
                 collection.addUses(new URI(req.getResourceUrl()));
             }
-            response = client.updateResource(check.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
-            status = response.getStatusCode();
+            if (collection.getResourceUrl() == null) {
+
+                response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+                if(response.getStatusCode() == HttpStatus.SC_CREATED) {
+                    return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+                }
+            } else {
+                response = client.updateResource(check.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+                if(response.getStatusCode() == HttpStatus.SC_OK) {
+                    return check.getResourceUrl();
+                }
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
         }
-        response.consumeContent();
-        if (status == 200) {
 
-            return true;
-
-        }
-
-        return false;
+        return null;
 
     }
 
-    public Boolean delete(Requirement requirement) throws URISyntaxException, IOException, OAuthException {
+    public Boolean delete(Requirement requirement) {
 
         Requirement check = getRequirement(requirement.getSysmlid());
 
-        if (check.getIdentifier() != null) {
-            client.deleteResource(check.getResourceUrl());
-
-            return true;
-
+        try {
+            if (check.getIdentifier() != null) {
+                ClientResponse delres = client.deleteResource(check.getResourceUrl());
+                if(delres.getStatusCode() == HttpStatus.SC_OK) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
         }
 
         return false;
 
     }
 
-    public Boolean delete(RequirementCollection collection) throws URISyntaxException, IOException, OAuthException {
+    public Boolean delete(RequirementCollection collection) {
 
         RequirementCollection check = getRequirementCollection(collection.getIdentifier());
 
-        if (collection.getIdentifier() != null) {
-            client.deleteResource(collection.getResourceUrl());
+        try {
+            if (collection.getIdentifier() != null) {
+                ClientResponse delres = client.deleteResource(check.getResourceUrl());
+                if(delres.getStatusCode() == HttpStatus.SC_OK) {
+                    return true;
+                }
 
-            return true;
-
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
         }
 
         return false;
 
+    }
+
+    public String createFolder(String name, String description) {
+
+        String xml = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:oslc=\"http://open-services.net/ns/core\" xmlns:nav=\"http://jazz.net/ns/rm/navigation\" xmlns:calm=\"http://jazz.net/xmlns/prod/jazz/calm/1.0/\"><nav:folder rdf:about=\"\"><dcterms:title>" + name + "</dcterms:title> <dcterms:description>" + description + "</dcterms:description><nav:parent rdf:resource=\"" + folderQuery + "\"/></nav:folder></rdf:RDF>";
+
+        try {
+            ClientResponse response = client.createResource(folderFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
+                return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
+        }
+        return null;
     }
 
     private OslcQueryResult getQuery(Map<String, String> params) {
@@ -259,46 +310,35 @@ public class DoorsClient {
 
         queryParams.setPrefix(prefix);
         queryParams.setWhere(where);
+        queryParams.setSelect("*");
 
-        OslcQuery query = new OslcQuery(client, queryCapability, 5, queryParams);
+        OslcQuery query = new OslcQuery(client, queryCapability, 200, queryParams);
         OslcQueryResult result = query.submit();
 
         return result;
 
     }
 
-    public static Link linkRequirement(Requirement requirement) throws URISyntaxException {
-        return new Link(new URI(requirement.getResourceUrl()), requirement.getTitle());
-    }
-
     private static Requirement[] processRequirements(OslcQueryResult result) {
 
         Set<Requirement> req = new HashSet<Requirement>();
 
-        //do {
-            for (String resultsUrl : result.getMembersUrls()) {
-                ClientResponse response = null;
-                try {
-                    response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
-                    String etag = response.getHeaders().getFirst(OSLCConstants.ETAG);
+        for (String resultsUrl : result.getMembersUrls()) {
+            ClientResponse response = null;
+            try {
+                response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
 
-                    if (response != null) {
-                        Requirement res = response.getEntity(Requirement.class);
-                        res.setResourceUrl(resultsUrl);
-                        res.setEtag(etag);
-                        req.add(res);
-                    }
-                } catch (Exception e) {
-                    logger.log(Level.SEVERE, "Unable to process artfiact at url: " + resultsUrl, e);
+                if(response.getStatusCode() == HttpStatus.SC_OK) {
+                    Requirement res = response.getEntity(Requirement.class);
+                    res.setResourceUrl(resultsUrl);
+                    res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+                    req.add(res);
                 }
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, e.getMessage(), e);
+            }
 
-            }
-            if (result.hasNext()) {
-                result = result.next();
-            } else {
-                //break;
-            }
-         //} while (true);
+        }
 
         return req.toArray(new Requirement[req.size()]);
 
@@ -308,30 +348,22 @@ public class DoorsClient {
 
         Set<RequirementCollection> req = new HashSet<RequirementCollection>();
 
-        //do {
-            for (String resultsUrl : result.getMembersUrls()) {
-                ClientResponse response = null;
-                try {
-                    response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
-                    String etag = response.getHeaders().getFirst(OSLCConstants.ETAG);
+        for (String resultsUrl : result.getMembersUrls()) {
+            ClientResponse response = null;
+            try {
+                response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
 
-                    if (response != null) {
-                        RequirementCollection res = response.getEntity(RequirementCollection.class);
-                        res.setResourceUrl(resultsUrl);
-                        res.setEtag(etag);
-                        req.add(res);
-                    }
-                } catch (Exception e) {
-                    logger.log(Level.SEVERE, "Unable to process artfiact at url: " + resultsUrl, e);
+                if(response.getStatusCode() == HttpStatus.SC_OK) {
+                    RequirementCollection res = response.getEntity(RequirementCollection.class);
+                    res.setResourceUrl(resultsUrl);
+                    res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+                    req.add(res);
                 }
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, e.getMessage(), e);
+            }
 
-            }
-            if (result.hasNext()) {
-                result = result.next();
-            } else {
-                //break;
-            }
-          //} while (true);
+        }
 
         return req.toArray(new RequirementCollection[req.size()]);
 
@@ -346,6 +378,5 @@ public class DoorsClient {
             System.out.println(line);
         }
         System.out.println();
-        response.consumeContent();
     }
 }

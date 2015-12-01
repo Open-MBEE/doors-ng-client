@@ -1,5 +1,6 @@
 package gov.nasa.jpl.mbee.doorsng;
 
+import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,6 +27,8 @@ public class DoorsNgUtils {
     private static String queryCapability;
     private static String requirementFactory;
     private static String requirementCollectionFactory;
+    private static String folderQuery;
+    private static String folderFactory;
 
     public static boolean clientLogin(String webContextUrl, String user, String password, String projectArea) {
         try {
@@ -77,6 +80,14 @@ public class DoorsNgUtils {
         return requirementCollectionFactory;
     }
 
+    public static String getFolderQuery() {
+        return folderQuery;
+    }
+
+    public static String getFolderFactory() {
+        return folderFactory;
+    }
+
     public static boolean init(String webContextUrl, String user, String password, String projectArea) {
         if (!clientLogin(webContextUrl, user, password, projectArea))
             return false;
@@ -85,11 +96,16 @@ public class DoorsNgUtils {
             String catalogUrl = helper.getCatalogUrl();
             String serviceProviderUrl = client.lookupServiceProviderUrl(catalogUrl, projectArea);
 
+            URL serviceProvider = new URL(serviceProviderUrl);
+            String[] serviceProviderPath = serviceProvider.getPath().split("/");
+
             queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
             requirementFactory = client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
             requirementCollectionFactory = client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE);
             featureInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE, client, "Requirement");
             collectionInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, client, "Requirement Collection");
+            folderQuery = serviceProvider.getProtocol() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2];
+            folderFactory = serviceProvider.getProtocol() + "://" + serviceProvider.getAuthority() + "/rm/folders?projectUrl=" + serviceProvider.getProtocol() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" +  serviceProviderPath[serviceProviderPath.length - 2];
         } catch (Exception e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
             return false;
