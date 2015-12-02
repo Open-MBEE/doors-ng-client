@@ -76,10 +76,11 @@ public class DoorsClientStandalone {
                     response = mapper.writeValueAsString(doors.delete(reqCol));
                 }
             } else if (folder != null) {
-                Folder fold = mapper.readValue(folder, Folder.class);
-
                 if ("create".equals(action)) {
+                    Folder fold = mapper.readValue(folder, Folder.class);
                     response = mapper.writeValueAsString(doors.createFolder(fold));
+                } else if ("read".equals(action)) {
+                    response = mapper.writeValueAsString(doors.getFolder(folder));
                 }
             }
         } catch (Exception e) {

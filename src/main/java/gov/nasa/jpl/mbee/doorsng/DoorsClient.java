@@ -22,7 +22,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
@@ -32,23 +31,17 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.namespace.QName;
-import javax.ws.rs.core.Response.Status;
-
-import net.oauth.OAuthException;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.RedirectStrategy;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.protocol.HttpContext;
-import org.apache.wink.client.ClientConfig;
 import org.apache.wink.client.ClientResponse;
-import org.apache.wink.client.RestClient;
-import org.apache.wink.client.httpclient.ApacheHttpClientConfig;
+import org.eclipse.lyo.oslc4j.core.model.Link;
+import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
+import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
+import org.eclipse.lyo.oslc4j.core.model.OslcConstants;
+import org.eclipse.lyo.client.exception.RootServicesException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
 import org.eclipse.lyo.client.oslc.OslcClient;
 import org.eclipse.lyo.client.oslc.jazz.JazzFormAuthClient;
@@ -56,10 +49,8 @@ import org.eclipse.lyo.client.oslc.jazz.JazzRootServicesHelper;
 import org.eclipse.lyo.client.oslc.resources.OslcQuery;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryResult;
+import org.eclipse.lyo.client.oslc.resources.RmUtil;
 import org.eclipse.lyo.client.oslc.resources.RmConstants;
-import org.eclipse.lyo.oslc4j.core.model.Link;
-import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
-import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 
 /**
  * Samples of logging in to Rational Requirements Composer and running OSLC
@@ -87,44 +78,60 @@ public class DoorsClient {
     private static final QName PROPERTY_PRIMARY_TEXT_WORKAROUND = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
     private static final String SYSMLID_ID = "__TU3sYHCEeWxYp5ZPr3Qqg";
 
-    private static final String webContextUrl = properties.getProperty("url");
-    private static final String user = properties.getProperty("service_account");
-    private static final String password = properties.getProperty("service_password");
-
     private static JazzFormAuthClient client;
     private static JazzRootServicesHelper helper;
     private static String requirementFactory;
     private static String requirementCollectionFactory;
     private static String queryCapability;
+    private static String rootFolder;
     private static String folderQuery;
     private static String folderFactory;
     private static ResourceShape featureInstanceShape;
     private static ResourceShape collectionInstanceShape;
 
+    private static final String webContextUrl = properties.getProperty("url");
+    private static final String user = properties.getProperty("service_account");
+    private static final String password = properties.getProperty("service_password");
+
     public DoorsClient(String projectArea) {
-        Boolean initSuccess = DoorsNgUtils.init(webContextUrl, user, password, projectArea);
-        if (!initSuccess) {
-            return;
-        }
 
         try {
-            client = DoorsNgUtils.getClient();
-            helper = DoorsNgUtils.getHelper();
-            requirementFactory = DoorsNgUtils.getRequirementFactory();
-            requirementCollectionFactory = DoorsNgUtils.getRequirementCollectionFactory();
-            queryCapability = DoorsNgUtils.getQueryCapability();
-            folderQuery = DoorsNgUtils.getFolderQuery();
-            folderFactory = DoorsNgUtils.getFolderFactory();
-            featureInstanceShape = DoorsNgUtils.getFeatureInstanceShape();
-            collectionInstanceShape = DoorsNgUtils.getCollectionInstanceShape();
+            if (client == null) {
+                helper = new JazzRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
+
+                String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
+                client = helper.initFormClient(user, password, authUrl);
+            }
+
+            if (client.login() == HttpStatus.SC_OK) {
+                String catalogUrl = helper.getCatalogUrl();
+                String serviceProviderUrl = client.lookupServiceProviderUrl(catalogUrl, projectArea);
+
+                URI serviceProvider = new URI(serviceProviderUrl);
+                String[] serviceProviderPath = serviceProvider.getPath().split("/");
+
+                queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
+                requirementFactory = client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
+                requirementCollectionFactory = client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE);
+                featureInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE, client, "Requirement");
+                collectionInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, client, "Requirement Collection");
+                rootFolder = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" + serviceProviderPath[serviceProviderPath.length - 2];
+                folderFactory = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + serviceProviderPath[serviceProviderPath.length - 2];
+                folderQuery = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2];
+
+            }
+        } catch (RootServicesException re) {
+            logger.log(Level.SEVERE,
+                    "Unable to access the Jazz rootservices document at: " + webContextUrl + "/rootservices", re);
         } catch (Exception e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
+
     }
 
     public Requirement getRequirement(String sysmlid) {
 
-        Map<String, String> params = new HashMap<>();
+        Map<String, String> params = new HashMap<String, String>();
         params.put("sysmlid", sysmlid);
 
         OslcQueryResult result = getQuery(params);
@@ -136,7 +143,7 @@ public class DoorsClient {
 
     public Requirement[] getRequirements() {
 
-        Map<String, String> params = new HashMap<>();
+        Map<String, String> params = new HashMap<String, String>();
 
         OslcQueryResult result = getQuery(params);
         Requirement[] reqs = processRequirements(result);
@@ -147,7 +154,7 @@ public class DoorsClient {
 
     public RequirementCollection getRequirementCollection(String title) {
 
-        Map<String, String> params = new HashMap<>();
+        Map<String, String> params = new HashMap<String, String>();
         params.put("title", title);
 
         OslcQueryResult result = getQuery(params);
@@ -159,12 +166,39 @@ public class DoorsClient {
 
     public RequirementCollection[] getRequirementCollections() {
 
-        Map<String, String> params = new HashMap<>();
+        Map<String, String> params = new HashMap<String, String>();
 
         OslcQueryResult result = getQuery(params);
         RequirementCollection[] cols = processRequirementCollections(result);
 
         return cols;
+
+    }
+
+    public String create(Requirement requirement) {
+
+        ClientResponse response;
+
+        requirement.setInstanceShape(featureInstanceShape.getAbout());
+
+        if (requirement.getParent() != null) {
+            try {
+                requirement.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(requirement.getParent()));
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, e.getMessage(), e);
+            }
+        }
+
+        try {
+            response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            if(response.getStatusCode() == HttpStatus.SC_CREATED) {
+                return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
+        }
+
+        return null;
 
     }
 
@@ -175,7 +209,6 @@ public class DoorsClient {
         Integer status = null;
 
         requirement.setInstanceShape(featureInstanceShape.getAbout());
-        System.out.println(check.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER));
 
         if (requirement.getParent() != null) {
             try {
@@ -184,7 +217,6 @@ public class DoorsClient {
                 logger.log(Level.SEVERE, e.getMessage(), e);
             }
         }
-        System.out.println(requirement.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER));
 
         try {
             if (check.getResourceUrl() == null) {
@@ -206,6 +238,38 @@ public class DoorsClient {
 
     }
 
+    public String create(RequirementCollection collection) {
+
+        ClientResponse response;
+
+        collection.setInstanceShape(collectionInstanceShape.getAbout());
+
+        if (collection.getParent() != null) {
+            try {
+                collection.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(collection.getParent()));
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, e.getMessage(), e);
+            }
+        }
+
+        try {
+            collection.clearUses();
+            for (String sysmlid : collection.getSysmlids()) {
+                Requirement req = getRequirement(sysmlid);
+                collection.addUses(new URI(req.getResourceUrl()));
+            }
+            response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            if(response.getStatusCode() == HttpStatus.SC_CREATED) {
+                return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+            }
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
+        }
+
+        return null;
+
+    }
+
     public String createUpdate(RequirementCollection collection) {
 
         RequirementCollection check = getRequirementCollection(collection.getTitle());
@@ -213,6 +277,14 @@ public class DoorsClient {
         Integer status = null;
 
         collection.setInstanceShape(collectionInstanceShape.getAbout());
+
+        if (collection.getParent() != null) {
+            try {
+                collection.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(collection.getParent()));
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, e.getMessage(), e);
+            }
+        }
 
         try {
             collection.clearUses();
@@ -279,26 +351,38 @@ public class DoorsClient {
 
     }
 
-    public String createFolder(Folder folder) {
+    public String getFolder(String folder) {
 
-        //String xml = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:oslc=\"http://open-services.net/ns/core\" xmlns:nav=\"http://jazz.net/ns/rm/navigation\" xmlns:calm=\"http://jazz.net/xmlns/prod/jazz/calm/1.0/\"><nav:folder rdf:about=\"\"><dcterms:title>" + name + "</dcterms:title> <dcterms:description>" + description + "</dcterms:description><nav:parent rdf:resource=\"" + folderQuery + "\"/></nav:folder></rdf:RDF>";
-
-        if (folder.getParent() != null) {
-            try {
-                folder.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(folder.getParent()));
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, e.getMessage(), e);
-            }
-        } else {
-            try {
-                folder.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(folderQuery));
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, e.getMessage(), e);
-            }
-        }
+        Map<String, String> params = new HashMap<String, String>();
+        params.put("folder", folder);
+        System.out.println(folder);
 
         try {
-            ClientResponse response = client.createResource(folderFactory, folder, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            ClientResponse response = client.getResource(folderQuery);
+            //Folder is = response.getEntity(InputStream.class);
+
+            processRawResponse(response);
+            //if(response.getStatusCode() == HttpStatus.SC_OK) {
+            //    Folder res = response.getEntity(Folder.class);
+            //    System.out.println(res.getTitle());
+            //}
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
+        }
+
+        return null;
+    }
+
+    public String createFolder(Folder folder) {
+        String parentFolder = rootFolder;
+        if (folder.getParent() != null) {
+            parentFolder = folder.getParent();
+        }
+
+        String xml = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:oslc=\"http://open-services.net/ns/core\" xmlns:nav=\"http://jazz.net/ns/rm/navigation\" xmlns:calm=\"http://jazz.net/xmlns/prod/jazz/calm/1.0/\"><nav:folder rdf:about=\"\"><dcterms:title>" + folder.getTitle() + "</dcterms:title> <dcterms:description>" + folder.getDescription() + "</dcterms:description><nav:parent rdf:resource=\"" + parentFolder + "\"/></nav:folder></rdf:RDF>";
+
+        try {
+            ClientResponse response = client.createResource(folderFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
             if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
             }

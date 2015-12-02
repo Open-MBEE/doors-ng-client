@@ -6,6 +6,27 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
+  <repositories>
+    <repository>
+      <id>oauth</id>
+      <name>OAuth Repository</name>
+      <url>http://oauth.googlecode.com/svn/code/maven</url>
+    </repository>
+    <repository>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <id>artifactory</id>
+      <name>libs-release</name>
+      <url>http://europambee-build.jpl.nasa.gov:8082/artifactory/ext-release-local</url>
+    </repository>
+    <repository>
+      <snapshots />
+      <id>artifactory-snapshots</id>
+      <name>libs-snapshot</name>
+      <url>http://europambee-build.jpl.nasa.gov:8082/artifactory/ext-snapshot-local</url>
+    </repository>
+  </repositories>
   <dependencies>
     <dependency>
       <groupId>org.eclipse.lyo.clients</groupId>
@@ -33,42 +54,4 @@
       <version>1.2</version>
     </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.3</version>
-        <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>2.5.4</version>
-        <configuration>
-          <appendAssemblyId>false</appendAssemblyId>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
-          <archive>
-            <manifest>
-              <mainClass>gov.nasa.jpl.mbee.doorsng.DoorsClientStandalone</mainClass>
-              <addClasspath>true</addClasspath>
-            </manifest>
-          </archive>
-        </configuration>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
 </project>

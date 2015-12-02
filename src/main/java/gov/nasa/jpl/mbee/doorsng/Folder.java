@@ -33,14 +33,15 @@ import org.eclipse.lyo.oslc4j.core.model.AbstractResource;
 import org.eclipse.lyo.oslc4j.core.model.OslcConstants;
 import org.eclipse.lyo.client.oslc.resources.RmConstants;
 
-@OslcNamespace(RmConstants.REQUIREMENTS_MANAGEMENT_NAMESPACE)
-@OslcResourceShape(title = "Folder Resource Shape", describes = RmConstants.JAZZ_RM_NAV_NAMESPACE + "parent")
+@OslcNamespace(OslcConstants.OSLC_CORE_NAMESPACE)
+@OslcResourceShape(title = "Requirement Resource Shape", describes = RmConstants.JAZZ_RM_NAV_NAMESPACE + "parent")
 public class Folder extends AbstractResource
 {
     private String title;
 	private String description;
     private String parent;
-    
+    private String resourceUrl;
+
     public Folder()
     {
         super();
@@ -89,5 +90,13 @@ public class Folder extends AbstractResource
     public void setParent(final String parent)
     {
         this.parent = parent;
+    }
+
+    public String getResourceUrl() {
+        return resourceUrl;
+    }
+
+    public void setResourceUrl(final String resourceUrl) {
+        this.resourceUrl = resourceUrl;
     }
 }
