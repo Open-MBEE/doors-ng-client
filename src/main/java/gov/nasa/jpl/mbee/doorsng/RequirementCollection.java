@@ -68,11 +68,6 @@ public final class RequirementCollection extends Requirement
         return uses.toArray(new URI[uses.size()]);
     }
 
-    public String[] getSysmlids()
-    {
-        return sysmlids;
-    }
-
     public void setUses(final URI[] uses)
     {
         this.uses.clear();
@@ -81,11 +76,6 @@ public final class RequirementCollection extends Requirement
         {
             this.uses.addAll(Arrays.asList(uses));
         }
-    }
-
-    public void setSysmlids(String[] sysmlids)
-    {
-        this.sysmlids = sysmlids;
     }
 
     public void clearUses() {

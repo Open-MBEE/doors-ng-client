@@ -68,10 +68,15 @@ public class DoorsClient {
     private static Properties properties = new Properties();
 
     static {
+
         try {
+
             properties.load(DoorsClient.class.getResourceAsStream("/doors.properties"));
+
         } catch (IOException e) {
+
             throw new RuntimeException(e);
+
         }
     }
 
@@ -96,6 +101,7 @@ public class DoorsClient {
     public DoorsClient(String projectArea) {
 
         try {
+
             if (client == null) {
                 helper = new JazzRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
 
@@ -120,58 +126,76 @@ public class DoorsClient {
                 folderQuery = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2];
 
             }
+
         } catch (RootServicesException re) {
-            logger.log(Level.SEVERE,
-                    "Unable to access the Jazz rootservices document at: " + webContextUrl + "/rootservices", re);
+
+            logger.log(Level.SEVERE, "Unable to access the Jazz rootservices document at: " + webContextUrl + "/rootservices", re);
+
         } catch (Exception e) {
+
             logger.log(Level.SEVERE, e.getMessage(), e);
+
         }
 
     }
 
-    public Requirement getRequirement(String sysmlid) {
+    public Requirement getRequirement(String resourceUrl) {
 
-        Map<String, String> params = new HashMap<String, String>();
-        params.put("sysmlid", sysmlid);
+        ClientResponse response = null;
 
-        OslcQueryResult result = getQuery(params);
-        Requirement[] reqs = processRequirements(result);
+        try {
 
-        return reqs.length > 0 ? reqs[reqs.length - 1] : new Requirement();
+            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
+
+            if(response.getStatusCode() == HttpStatus.SC_OK) {
+                Requirement requirement = response.getEntity(Requirement.class);
+                requirement.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+
+                return requirement;
+
+            }
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return new Requirement();
 
     }
 
     public Requirement[] getRequirements() {
 
-        Map<String, String> params = new HashMap<String, String>();
+        OslcQuery query = new OslcQuery(client, queryCapability, 200, new OslcQueryParameters());
+        OslcQueryResult result = query.submit();
 
-        OslcQueryResult result = getQuery(params);
         Requirement[] reqs = processRequirements(result);
 
         return reqs;
 
     }
 
-    public RequirementCollection getRequirementCollection(String title) {
+    public RequirementCollection getRequirementCollection(String resourceUrl) {
 
-        Map<String, String> params = new HashMap<String, String>();
-        params.put("title", title);
+        ClientResponse response = null;
+        try {
 
-        OslcQueryResult result = getQuery(params);
-        RequirementCollection[] cols = processRequirementCollections(result);
+            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
 
-        return cols.length > 0 ? cols[cols.length - 1] : new RequirementCollection();
+            if(response.getStatusCode() == HttpStatus.SC_OK) {
+                RequirementCollection collection = response.getEntity(RequirementCollection.class);
 
-    }
+                return collection;
 
-    public RequirementCollection[] getRequirementCollections() {
+            }
 
-        Map<String, String> params = new HashMap<String, String>();
+        } catch (Exception e) {
 
-        OslcQueryResult result = getQuery(params);
-        RequirementCollection[] cols = processRequirementCollections(result);
+            logger.log(Level.SEVERE, e.getMessage(), e);
 
-        return cols;
+        }
+
+        return new RequirementCollection();
 
     }
 
@@ -181,57 +205,46 @@ public class DoorsClient {
 
         requirement.setInstanceShape(featureInstanceShape.getAbout());
 
-        if (requirement.getParent() != null) {
-            try {
-                requirement.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(requirement.getParent()));
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, e.getMessage(), e);
-            }
-        }
-
         try {
+
             response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
             if(response.getStatusCode() == HttpStatus.SC_CREATED) {
+
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+
             }
+
         } catch (Exception e) {
+
             logger.log(Level.SEVERE, e.getMessage(), e);
+
         }
 
         return null;
 
     }
 
-    public String createUpdate(Requirement requirement) {
+    public String update(Requirement requirement) {
 
-        Requirement check = getRequirement(requirement.getSysmlid());
+        Requirement check = getRequirement(requirement.getResourceUrl());
         ClientResponse response;
         Integer status = null;
 
         requirement.setInstanceShape(featureInstanceShape.getAbout());
 
-        if (requirement.getParent() != null) {
-            try {
-                requirement.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(requirement.getParent()));
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, e.getMessage(), e);
-            }
-        }
-
         try {
-            if (check.getResourceUrl() == null) {
-                response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-                if(response.getStatusCode() == HttpStatus.SC_CREATED) {
-                    return response.getHeaders().getFirst(HttpHeaders.LOCATION);
-                }
-            } else {
-                response = client.updateResource(check.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
-                if(response.getStatusCode() == HttpStatus.SC_OK) {
-                    return check.getResourceUrl();
-                }
+
+            response = client.updateResource(check.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            if(response.getStatusCode() == HttpStatus.SC_OK) {
+
+                return check.getResourceUrl();
+
             }
+
         } catch (Exception e) {
+
             logger.log(Level.SEVERE, e.getMessage(), e);
+
         }
 
         return null;
@@ -244,136 +257,79 @@ public class DoorsClient {
 
         collection.setInstanceShape(collectionInstanceShape.getAbout());
 
-        if (collection.getParent() != null) {
-            try {
-                collection.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(collection.getParent()));
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, e.getMessage(), e);
-            }
-        }
-
         try {
-            collection.clearUses();
-            for (String sysmlid : collection.getSysmlids()) {
-                Requirement req = getRequirement(sysmlid);
-                collection.addUses(new URI(req.getResourceUrl()));
-            }
+
             response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+
             if(response.getStatusCode() == HttpStatus.SC_CREATED) {
+
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+
             }
+
         } catch (Exception e) {
+
             logger.log(Level.SEVERE, e.getMessage(), e);
+
         }
 
         return null;
 
     }
 
-    public String createUpdate(RequirementCollection collection) {
+    public String update(RequirementCollection collection) {
 
-        RequirementCollection check = getRequirementCollection(collection.getTitle());
+        RequirementCollection check = getRequirementCollection(collection.getResourceUrl());
         ClientResponse response;
         Integer status = null;
 
         collection.setInstanceShape(collectionInstanceShape.getAbout());
 
-        if (collection.getParent() != null) {
-            try {
-                collection.getExtendedProperties().put(RmConstants.PROPERTY_PARENT_FOLDER, new URI(collection.getParent()));
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, e.getMessage(), e);
-            }
-        }
-
         try {
-            collection.clearUses();
-            for (String sysmlid : collection.getSysmlids()) {
-                Requirement req = getRequirement(sysmlid);
-                collection.addUses(new URI(req.getResourceUrl()));
-            }
-            if (collection.getResourceUrl() == null) {
 
-                response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-                if(response.getStatusCode() == HttpStatus.SC_CREATED) {
-                    return response.getHeaders().getFirst(HttpHeaders.LOCATION);
-                }
-            } else {
-                response = client.updateResource(check.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
-                if(response.getStatusCode() == HttpStatus.SC_OK) {
-                    return check.getResourceUrl();
-                }
+            response = client.updateResource(check.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+
+            if(response.getStatusCode() == HttpStatus.SC_OK) {
+
+                return check.getResourceUrl();
+
             }
+
         } catch (Exception e) {
+
             logger.log(Level.SEVERE, e.getMessage(), e);
+
         }
 
         return null;
 
     }
 
-    public Boolean delete(Requirement requirement) {
+    public Folder getFolder(String folderUrl) {
 
-        Requirement check = getRequirement(requirement.getSysmlid());
-
-        try {
-            if (check.getIdentifier() != null) {
-                ClientResponse delres = client.deleteResource(check.getResourceUrl());
-                if(delres.getStatusCode() == HttpStatus.SC_OK) {
-                    return true;
-                }
-            }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, e.getMessage(), e);
-        }
-
-        return false;
-
-    }
-
-    public Boolean delete(RequirementCollection collection) {
-
-        RequirementCollection check = getRequirementCollection(collection.getIdentifier());
+        ClientResponse response;
 
         try {
-            if (collection.getIdentifier() != null) {
-                ClientResponse delres = client.deleteResource(check.getResourceUrl());
-                if(delres.getStatusCode() == HttpStatus.SC_OK) {
-                    return true;
-                }
+
+            response = client.getResource(folderUrl, OSLCConstants.CT_RDF);
+            if(response.getStatusCode() == HttpStatus.SC_OK) {
+                Folder folder = response.getEntity(Folder.class);
+
+                return folder;
 
             }
+
         } catch (Exception e) {
+
             logger.log(Level.SEVERE, e.getMessage(), e);
+
         }
 
-        return false;
-
+        return new Folder();
     }
 
-    public String getFolder(String folder) {
+    public String create(Folder folder) {
 
-        Map<String, String> params = new HashMap<String, String>();
-        params.put("folder", folder);
-        System.out.println(folder);
-
-        try {
-            ClientResponse response = client.getResource(folderQuery);
-            //Folder is = response.getEntity(InputStream.class);
-
-            processRawResponse(response);
-            //if(response.getStatusCode() == HttpStatus.SC_OK) {
-            //    Folder res = response.getEntity(Folder.class);
-            //    System.out.println(res.getTitle());
-            //}
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, e.getMessage(), e);
-        }
-
-        return null;
-    }
-
-    public String createFolder(Folder folder) {
         String parentFolder = rootFolder;
         if (folder.getParent() != null) {
             parentFolder = folder.getParent();
@@ -382,34 +338,47 @@ public class DoorsClient {
         String xml = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:oslc=\"http://open-services.net/ns/core\" xmlns:nav=\"http://jazz.net/ns/rm/navigation\" xmlns:calm=\"http://jazz.net/xmlns/prod/jazz/calm/1.0/\"><nav:folder rdf:about=\"\"><dcterms:title>" + folder.getTitle() + "</dcterms:title> <dcterms:description>" + folder.getDescription() + "</dcterms:description><nav:parent rdf:resource=\"" + parentFolder + "\"/></nav:folder></rdf:RDF>";
 
         try {
+
             ClientResponse response = client.createResource(folderFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
             if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
             }
+
         } catch (Exception e) {
+
             logger.log(Level.SEVERE, e.getMessage(), e);
+
         }
 
         return null;
 
     }
 
-    private OslcQueryResult getQuery(Map<String, String> params) {
+    public Boolean delete(String resourceUrl) {
 
-        OslcQueryParameters queryParams = new OslcQueryParameters();
-        String prefix = "";
-        String where = "";
+        try {
 
-        if (params.get("sysmlid") != null) {
-            prefix = "rm_property=<https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/>";
-            where = String.format("rm_property:%s=\"%s\"", SYSMLID_ID, params.get("sysmlid"));
-        } else if (params.get("name") != null) {
-            prefix = "dcterms=<http://purl.org/dc/terms/>";
-            where = String.format("dcterms:title=\"%s\"", params.get("name"));
+            ClientResponse delres = client.deleteResource(resourceUrl);
+            if(delres.getStatusCode() == HttpStatus.SC_OK) {
+                return true;
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
         }
 
-        queryParams.setPrefix(prefix);
-        queryParams.setWhere(where);
+        return false;
+
+    }
+
+    private OslcQueryResult getQuery(String id) {
+
+        OslcQueryParameters queryParams = new OslcQueryParameters();
+
+        queryParams.setPrefix("dcterms=<http://purl.org/dc/terms/>");
+        queryParams.setWhere(String.format("dcterms:identifier=\"%s\"", id));
         queryParams.setSelect("*");
 
         OslcQuery query = new OslcQuery(client, queryCapability, 200, queryParams);
@@ -426,6 +395,7 @@ public class DoorsClient {
         for (String resultsUrl : result.getMembersUrls()) {
             ClientResponse response = null;
             try {
+
                 response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
 
                 if(response.getStatusCode() == HttpStatus.SC_OK) {
@@ -434,8 +404,11 @@ public class DoorsClient {
                     res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
                     req.add(res);
                 }
+
             } catch (Exception e) {
+
                 logger.log(Level.SEVERE, e.getMessage(), e);
+
             }
 
         }
@@ -449,8 +422,11 @@ public class DoorsClient {
         Set<RequirementCollection> req = new HashSet<RequirementCollection>();
 
         for (String resultsUrl : result.getMembersUrls()) {
+
             ClientResponse response = null;
+
             try {
+
                 response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
 
                 if(response.getStatusCode() == HttpStatus.SC_OK) {
@@ -459,8 +435,11 @@ public class DoorsClient {
                     res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
                     req.add(res);
                 }
+
             } catch (Exception e) {
+
                 logger.log(Level.SEVERE, e.getMessage(), e);
+
             }
 
         }
@@ -470,13 +449,17 @@ public class DoorsClient {
     }
 
     private static void processRawResponse(ClientResponse response) throws IOException {
+
         InputStream is = response.getEntity(InputStream.class);
         BufferedReader in = new BufferedReader(new InputStreamReader(is));
 
         String line = null;
+
         while ((line = in.readLine()) != null) {
             System.out.println(line);
         }
+
         System.out.println();
+
     }
 }

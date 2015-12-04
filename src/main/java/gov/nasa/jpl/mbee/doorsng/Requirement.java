@@ -19,7 +19,11 @@ package gov.nasa.jpl.mbee.doorsng;
 
 import java.net.URI;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.TreeSet;
+
+import javax.xml.namespace.QName;
 
 import org.eclipse.lyo.oslc4j.core.annotation.OslcDescription;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcName;
@@ -38,12 +42,12 @@ import org.eclipse.lyo.client.oslc.resources.RmConstants;
 public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requirement
 {
     
-    private final Set<URI>    rdfTypes                  = new TreeSet<URI>();
-    private String            sysmlid;
-    private String            resourceUrl;
-    private String            eTag;
-    private String            parent;
-    
+    private final Set<URI>     rdfTypes                  = new TreeSet<URI>();
+    private final Map<QName, Object> extended                  = new HashMap<QName, Object>();
+    private String             sysmlid;
+    private String             resourceUrl;
+    private String             eTag;
+
     public Requirement()
     {
         super();
@@ -79,11 +83,12 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
     }
 
     public String getParent() {
-        return parent;
+        return this.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER).toString();
     }
 
-    public void setParent(final String parent) {
-        this.parent = parent;
+    public void setParent(final URI parent) {
+        extended.put(RmConstants.PROPERTY_PARENT_FOLDER, parent);
+        this.setExtendedProperties(extended);
     }
 
     public String getResourceUrl() {
