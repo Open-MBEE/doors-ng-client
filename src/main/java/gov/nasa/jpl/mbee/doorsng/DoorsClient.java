@@ -146,7 +146,6 @@ public class DoorsClient {
         try {
 
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
-
             if(response.getStatusCode() == HttpStatus.SC_OK) {
                 Requirement requirement = response.getEntity(Requirement.class);
                 requirement.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
@@ -154,6 +153,7 @@ public class DoorsClient {
                 return requirement;
 
             }
+
         } catch (Exception e) {
 
             logger.log(Level.SEVERE, e.getMessage(), e);
@@ -172,30 +172,6 @@ public class DoorsClient {
         Requirement[] reqs = processRequirements(result);
 
         return reqs;
-
-    }
-
-    public RequirementCollection getRequirementCollection(String resourceUrl) {
-
-        ClientResponse response = null;
-        try {
-
-            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
-
-            if(response.getStatusCode() == HttpStatus.SC_OK) {
-                RequirementCollection collection = response.getEntity(RequirementCollection.class);
-
-                return collection;
-
-            }
-
-        } catch (Exception e) {
-
-            logger.log(Level.SEVERE, e.getMessage(), e);
-
-        }
-
-        return new RequirementCollection();
 
     }
 
@@ -251,6 +227,29 @@ public class DoorsClient {
 
     }
 
+    public RequirementCollection getRequirementCollection(String resourceUrl) {
+
+        ClientResponse response = null;
+        try {
+
+            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
+            if(response.getStatusCode() == HttpStatus.SC_OK) {
+                RequirementCollection collection = response.getEntity(RequirementCollection.class);
+
+                return collection;
+
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return new RequirementCollection();
+
+    }
+
     public String create(RequirementCollection collection) {
 
         ClientResponse response;
@@ -260,7 +259,6 @@ public class DoorsClient {
         try {
 
             response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-
             if(response.getStatusCode() == HttpStatus.SC_CREATED) {
 
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
@@ -288,7 +286,6 @@ public class DoorsClient {
         try {
 
             response = client.updateResource(check.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
-
             if(response.getStatusCode() == HttpStatus.SC_OK) {
 
                 return check.getResourceUrl();
@@ -373,78 +370,42 @@ public class DoorsClient {
 
     }
 
-    private OslcQueryResult getQuery(String id) {
-
-        OslcQueryParameters queryParams = new OslcQueryParameters();
-
-        queryParams.setPrefix("dcterms=<http://purl.org/dc/terms/>");
-        queryParams.setWhere(String.format("dcterms:identifier=\"%s\"", id));
-        queryParams.setSelect("*");
-
-        OslcQuery query = new OslcQuery(client, queryCapability, 200, queryParams);
-        OslcQueryResult result = query.submit();
-
-        return result;
-
-    }
-
     private static Requirement[] processRequirements(OslcQueryResult result) {
 
         Set<Requirement> req = new HashSet<Requirement>();
 
-        for (String resultsUrl : result.getMembersUrls()) {
-            ClientResponse response = null;
-            try {
+		do {
 
-                response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
+            for (String resultsUrl : result.getMembersUrls()) {
+                ClientResponse response = null;
+                try {
 
-                if(response.getStatusCode() == HttpStatus.SC_OK) {
-                    Requirement res = response.getEntity(Requirement.class);
-                    res.setResourceUrl(resultsUrl);
-                    res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
-                    req.add(res);
+                    response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
+
+                    if(response.getStatusCode() == HttpStatus.SC_OK) {
+                        Requirement res = response.getEntity(Requirement.class);
+                        res.setResourceUrl(resultsUrl);
+                        res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+                        req.add(res);
+                    }
+
+                } catch (Exception e) {
+
+                    logger.log(Level.SEVERE, e.getMessage(), e);
+
                 }
-
-            } catch (Exception e) {
-
-                logger.log(Level.SEVERE, e.getMessage(), e);
 
             }
 
-        }
+			if (result.hasNext()) {
+				result = result.next();
+			} else {
+				break;
+			}
+
+		} while(true);
 
         return req.toArray(new Requirement[req.size()]);
-
-    }
-
-    private static RequirementCollection[] processRequirementCollections(OslcQueryResult result) {
-
-        Set<RequirementCollection> req = new HashSet<RequirementCollection>();
-
-        for (String resultsUrl : result.getMembersUrls()) {
-
-            ClientResponse response = null;
-
-            try {
-
-                response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
-
-                if(response.getStatusCode() == HttpStatus.SC_OK) {
-                    RequirementCollection res = response.getEntity(RequirementCollection.class);
-                    res.setResourceUrl(resultsUrl);
-                    res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
-                    req.add(res);
-                }
-
-            } catch (Exception e) {
-
-                logger.log(Level.SEVERE, e.getMessage(), e);
-
-            }
-
-        }
-
-        return req.toArray(new RequirementCollection[req.size()]);
 
     }
 

@@ -31,7 +31,7 @@
     <dependency>
       <groupId>org.eclipse.lyo.clients</groupId>
       <artifactId>oslc-java-client</artifactId>
-      <version>[3.0.0-SNAPSHOT,)</version>
+      <version>3.0.0-20151202.173239-1</version>
     </dependency>
     <dependency>
       <groupId>xml-apis</groupId>
