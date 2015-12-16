@@ -20,16 +20,19 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.HashSet;
-
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.xml.namespace.QName;
 
 import org.apache.http.HttpStatus;
@@ -41,6 +44,7 @@ import org.eclipse.lyo.oslc4j.core.model.Link;
 import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 import org.eclipse.lyo.oslc4j.core.model.OslcConstants;
+import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.client.exception.RootServicesException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
 import org.eclipse.lyo.client.oslc.OslcClient;
@@ -81,7 +85,6 @@ public class DoorsClient {
     }
 
     private static final QName PROPERTY_PRIMARY_TEXT_WORKAROUND = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
-    private static final String SYSMLID_ID = "__TU3sYHCEeWxYp5ZPr3Qqg";
 
     private static JazzFormAuthClient client;
     private static JazzRootServicesHelper helper;
@@ -93,6 +96,7 @@ public class DoorsClient {
     private static String folderFactory;
     private static ResourceShape featureInstanceShape;
     private static ResourceShape collectionInstanceShape;
+    private static Map<String, URI> projectProperties = new HashMap<String, URI>();
 
     private static final String webContextUrl = properties.getProperty("url");
     private static final String user = properties.getProperty("service_account");
@@ -102,29 +106,27 @@ public class DoorsClient {
 
         try {
 
-            if (client == null) {
-                helper = new JazzRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
-
-                String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
-                client = helper.initFormClient(user, password, authUrl);
-            }
+            helper = new JazzRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
+            String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
+            client = helper.initFormClient(user, password, authUrl);
 
             if (client.login() == HttpStatus.SC_OK) {
+
                 String catalogUrl = helper.getCatalogUrl();
                 String serviceProviderUrl = client.lookupServiceProviderUrl(catalogUrl, projectArea);
 
                 URI serviceProvider = new URI(serviceProviderUrl);
                 String[] serviceProviderPath = serviceProvider.getPath().split("/");
 
-                queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
-                requirementFactory = client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
-                requirementCollectionFactory = client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE);
+                queryCapability = URLDecoder.decode(client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE));
+                requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE));
+                requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE));
+                rootFolder = URLDecoder.decode(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" + serviceProviderPath[serviceProviderPath.length - 2]);
+                folderQuery = URLDecoder.decode(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2]);
+                folderFactory = URLDecoder.decode(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + serviceProviderPath[serviceProviderPath.length - 2]);
+
                 featureInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE, client, "Requirement");
                 collectionInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, client, "Requirement Collection");
-                rootFolder = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" + serviceProviderPath[serviceProviderPath.length - 2];
-                folderFactory = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + serviceProviderPath[serviceProviderPath.length - 2];
-                folderQuery = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2];
-
             }
 
         } catch (RootServicesException re) {
@@ -146,6 +148,7 @@ public class DoorsClient {
         try {
 
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
+
             if(response.getStatusCode() == HttpStatus.SC_OK) {
                 Requirement requirement = response.getEntity(Requirement.class);
                 requirement.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
@@ -184,6 +187,8 @@ public class DoorsClient {
         try {
 
             response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            response.consumeContent();
+
             if(response.getStatusCode() == HttpStatus.SC_CREATED) {
 
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
@@ -202,18 +207,19 @@ public class DoorsClient {
 
     public String update(Requirement requirement) {
 
-        Requirement check = getRequirement(requirement.getResourceUrl());
         ClientResponse response;
         Integer status = null;
 
         requirement.setInstanceShape(featureInstanceShape.getAbout());
+        Requirement check = getRequirement(requirement.getResourceUrl());
 
         try {
 
-            response = client.updateResource(check.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
-            if(response.getStatusCode() == HttpStatus.SC_OK) {
+            response = client.updateResource(requirement.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            response.consumeContent();
 
-                return check.getResourceUrl();
+            if(response.getStatusCode() == HttpStatus.SC_OK) {
+                return requirement.getResourceUrl();
 
             }
 
@@ -233,8 +239,10 @@ public class DoorsClient {
         try {
 
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
+
             if(response.getStatusCode() == HttpStatus.SC_OK) {
                 RequirementCollection collection = response.getEntity(RequirementCollection.class);
+                collection.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
 
                 return collection;
 
@@ -259,6 +267,8 @@ public class DoorsClient {
         try {
 
             response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            response.consumeContent();
+
             if(response.getStatusCode() == HttpStatus.SC_CREATED) {
 
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
@@ -277,18 +287,21 @@ public class DoorsClient {
 
     public String update(RequirementCollection collection) {
 
-        RequirementCollection check = getRequirementCollection(collection.getResourceUrl());
         ClientResponse response;
         Integer status = null;
 
         collection.setInstanceShape(collectionInstanceShape.getAbout());
 
+        RequirementCollection check = getRequirementCollection(collection.getResourceUrl());
+
         try {
 
-            response = client.updateResource(check.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            response = client.updateResource(collection.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            response.consumeContent();
+
             if(response.getStatusCode() == HttpStatus.SC_OK) {
 
-                return check.getResourceUrl();
+                return collection.getResourceUrl();
 
             }
 
@@ -309,6 +322,7 @@ public class DoorsClient {
         try {
 
             response = client.getResource(folderUrl, OSLCConstants.CT_RDF);
+
             if(response.getStatusCode() == HttpStatus.SC_OK) {
                 Folder folder = response.getEntity(Folder.class);
 
@@ -326,6 +340,7 @@ public class DoorsClient {
     }
 
     public String create(Folder folder) {
+        ClientResponse response;
 
         String parentFolder = rootFolder;
         if (folder.getParent() != null) {
@@ -336,7 +351,9 @@ public class DoorsClient {
 
         try {
 
-            ClientResponse response = client.createResource(folderFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            response = client.createResource(folderFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            response.consumeContent();
+
             if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
             }
@@ -352,11 +369,14 @@ public class DoorsClient {
     }
 
     public Boolean delete(String resourceUrl) {
+        ClientResponse response;
 
         try {
 
-            ClientResponse delres = client.deleteResource(resourceUrl);
-            if(delres.getStatusCode() == HttpStatus.SC_OK) {
+            response = client.deleteResource(resourceUrl);
+            response.consumeContent();
+
+            if(response.getStatusCode() == HttpStatus.SC_OK) {
                 return true;
             }
 
@@ -368,6 +388,24 @@ public class DoorsClient {
 
         return false;
 
+    }
+
+    public URI getField(String name) {
+        if(projectProperties.isEmpty()) {
+            projectProperties = getFields();
+        }
+
+        return projectProperties.get(name);
+    }
+
+    public Map<String, URI> getFields() {
+        Property[] properties = featureInstanceShape.getProperties();
+
+        for (Property property : properties) {
+            projectProperties.put(property.getTitle(), property.getPropertyDefinition());
+        }
+
+        return projectProperties;
     }
 
     private static Requirement[] processRequirements(OslcQueryResult result) {
@@ -423,4 +461,5 @@ public class DoorsClient {
         System.out.println();
 
     }
+
 }

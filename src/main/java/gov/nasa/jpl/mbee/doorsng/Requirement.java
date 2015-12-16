@@ -41,12 +41,13 @@ import org.eclipse.lyo.client.oslc.resources.RmConstants;
 @OslcResourceShape(title = "Requirement Resource Shape", describes = RmConstants.TYPE_REQUIREMENT)
 public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requirement
 {
-    
-    private final Set<URI>     rdfTypes                  = new TreeSet<URI>();
-    private final Map<QName, Object> extended                  = new HashMap<QName, Object>();
-    private String             sysmlid;
-    private String             resourceUrl;
-    private String             eTag;
+
+
+    private final Set<URI> rdfTypes = new TreeSet<URI>();
+    private final Map<QName, Object> extended = new HashMap<QName, Object>();
+    private String sysmlid;
+    private String resourceUrl;
+    private String eTag;
 
     public Requirement()
     {
@@ -68,18 +69,13 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
         }
     }
 
-    @OslcDescription("Sysmlid to map back to mms.")
-    @OslcOccurs(Occurs.ExactlyOne)
-    @OslcPropertyDefinition("https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/__TU3sYHCEeWxYp5ZPr3Qqg")
-    @OslcTitle("sysmlid")
-    @OslcValueType(ValueType.String)
-    @OslcName("__TU3sYHCEeWxYp5ZPr3Qqg") // name has to match end of property definition
-    public String getSysmlid() {
-        return sysmlid;
+    public String getCustomField(URI property) {
+        return this.getExtendedProperties().get(new QName(property.toString())).toString();
     }
 
-    public void setSysmlid(final String sysmlid) {
-        this.sysmlid = sysmlid;
+    public void setCustomField(URI property, Object value) {
+        extended.put(new QName(property.toString()), value);
+        this.setExtendedProperties(extended);
     }
 
     public String getParent() {
