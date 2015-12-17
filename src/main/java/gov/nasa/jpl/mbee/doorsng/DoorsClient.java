@@ -315,13 +315,13 @@ public class DoorsClient {
 
     }
 
-    public Folder getFolder(String folderUrl) {
+    public Folder getFolder(String resourceUrl) {
 
         ClientResponse response;
 
         try {
 
-            response = client.getResource(folderUrl, OSLCConstants.CT_RDF);
+            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
 
             if(response.getStatusCode() == HttpStatus.SC_OK) {
                 Folder folder = response.getEntity(Folder.class);
