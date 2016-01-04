@@ -18,12 +18,21 @@ package gov.nasa.jpl.mbee.doorsng;
  *******************************************************************************/
 
 import java.net.URI;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.TreeSet;
+
+import javax.xml.namespace.QName;
 
 import org.eclipse.lyo.oslc4j.core.annotation.OslcDescription;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcName;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcNamespace;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcOccurs;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcPropertyDefinition;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcRange;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcReadOnly;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcResourceShape;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcTitle;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcValueType;
@@ -34,13 +43,17 @@ import org.eclipse.lyo.oslc4j.core.model.OslcConstants;
 import org.eclipse.lyo.client.oslc.resources.RmConstants;
 
 @OslcNamespace(OslcConstants.OSLC_CORE_NAMESPACE)
-@OslcResourceShape(title = "Requirement Resource Shape", describes = RmConstants.JAZZ_RM_NAV_NAMESPACE + "parent")
+@OslcResourceShape(title = "Folder Resource Shape", describes = {"http://open-services.net/ns/core", "http://jazz.net/ns/rm/navigation, http://jazz.net/xmlns/prod/jazz/calm/1.0"})
 public class Folder extends AbstractResource
 {
+
+    private final Map<QName, Object> extended = new HashMap<QName, Object>();
+
     private String title;
 	private String description;
-    private String parent;
-    private String resourceUrl;
+	private String identifier;
+	private final Set<URI>	  rdfTypes					= new TreeSet<URI>();
+	private URI	  serviceProvider;
 
     public Folder()
     {
@@ -51,7 +64,6 @@ public class Folder extends AbstractResource
     {
         super(about);
     }
-
 
 	@OslcDescription("Title (reference: Dublin Core) or often a single line summary of the resource represented as rich text in XHTML content.")
 	@OslcOccurs(Occurs.ExactlyOne)
@@ -72,9 +84,12 @@ public class Folder extends AbstractResource
 		return description;
 	}
 
-    public String getParent()
-    {
-        return parent;
+    public String getParent() {
+        Object parent = this.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER);
+        if (parent != null) {
+            return parent.toString();
+        }
+        return null;
     }
 
 	public void setTitle(final String title)
@@ -87,16 +102,9 @@ public class Folder extends AbstractResource
 		this.description = description;
 	}
 
-    public void setParent(final String parent)
-    {
-        this.parent = parent;
+    public void setParent(final URI parent) {
+        extended.put(RmConstants.PROPERTY_PARENT_FOLDER, parent);
+        this.setExtendedProperties(extended);
     }
 
-    public String getResourceUrl() {
-        return resourceUrl;
-    }
-
-    public void setResourceUrl(final String resourceUrl) {
-        this.resourceUrl = resourceUrl;
-    }
 }

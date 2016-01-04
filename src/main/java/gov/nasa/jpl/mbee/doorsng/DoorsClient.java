@@ -30,6 +30,9 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Properties;
+import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -96,6 +99,7 @@ public class DoorsClient {
     private static String folderFactory;
     private static ResourceShape featureInstanceShape;
     private static ResourceShape collectionInstanceShape;
+    private static URI folderAbout;
     private static Map<String, URI> projectProperties = new HashMap<String, URI>();
 
     private static final String webContextUrl = properties.getProperty("url");
@@ -120,22 +124,27 @@ public class DoorsClient {
     private void setResources(String serviceProviderUrl) {
         try {
 
-            URI serviceProvider = new URI(serviceProviderUrl);
+            URI serviceProvider = URI.create(serviceProviderUrl);
             String[] serviceProviderPath = serviceProvider.getPath().split("/");
 
-            queryCapability = URLDecoder.decode(client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE));
+            queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
             requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE));
             requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE));
-            rootFolder = URLDecoder.decode(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" + serviceProviderPath[serviceProviderPath.length - 2]);
-            folderQuery = URLDecoder.decode(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2]);
-            folderFactory = URLDecoder.decode(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + serviceProviderPath[serviceProviderPath.length - 2]);
+            rootFolder = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" + serviceProviderPath[serviceProviderPath.length - 2];
+            folderQuery = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2];
+            folderFactory = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + serviceProviderPath[serviceProviderPath.length - 2];
 
             featureInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE, client, "Requirement");
             collectionInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, client, "Requirement Collection");
+            folderAbout = URI.create(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/");
 
         } catch (Exception e) {
             return;
         }
+    }
+
+    public String getProject() {
+        return client.getProject();
     }
 
     public Requirement getRequirement(String resourceUrl) {
@@ -143,7 +152,6 @@ public class DoorsClient {
         ClientResponse response = null;
 
         try {
-
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
 
             if(response.getStatusCode() == HttpStatus.SC_OK) {
@@ -166,7 +174,7 @@ public class DoorsClient {
 
     public Requirement[] getRequirements() {
 
-        OslcQuery query = new OslcQuery(client, queryCapability, 200, new OslcQueryParameters());
+        OslcQuery query = new OslcQuery(client, queryCapability);
         OslcQueryResult result = query.submit();
 
         Requirement[] reqs = processRequirements(result);
@@ -311,7 +319,7 @@ public class DoorsClient {
         return null;
 
     }
-
+    /*
     public Folder getFolder(String resourceUrl) {
 
         ClientResponse response;
@@ -334,6 +342,25 @@ public class DoorsClient {
         }
 
         return new Folder();
+    }
+    */
+
+    public Map<String, String> getFolder(String resourceUrl) {
+
+        ClientResponse response;
+
+        try {
+
+            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
+            return processFolderQuery(response);
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return new HashMap<String, String>();
     }
 
     public String create(Folder folder) {
@@ -364,6 +391,36 @@ public class DoorsClient {
         return null;
 
     }
+
+    /*
+    public String create(Folder folder) {
+        ClientResponse response;
+
+        String parentFolder = rootFolder;
+        if (folder.getParent() != null) {
+            parentFolder = URLDecoder.decode(folder.getParent());
+        }
+        //folder.setInstanceShape(folderAbout);
+
+        try {
+
+            response = client.createResource(folderFactory, folder, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            //processRawResponse(response);
+            response.consumeContent();
+
+            if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
+                return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+            }
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return null;
+
+    }
+    */
 
     public Boolean delete(String resourceUrl) {
         ClientResponse response;
@@ -426,6 +483,7 @@ public class DoorsClient {
 
                 } catch (Exception e) {
 
+                    e.printStackTrace();
                     logger.log(Level.SEVERE, e.getMessage(), e);
 
                 }
@@ -457,6 +515,31 @@ public class DoorsClient {
 
         System.out.println();
 
+    }
+
+    private static Map<String, String> processFolderQuery(ClientResponse response) throws IOException {
+
+        Map<String, String> result = new HashMap<String, String>();
+
+        InputStream is = response.getEntity(InputStream.class);
+        BufferedReader in = new BufferedReader(new InputStreamReader(is));
+
+        String line = null;
+
+        while ((line = in.readLine()) != null) {
+            Matcher tm = Pattern.compile("<dcterms:title>(.*?)</dcterms:title>").matcher(line);
+            Matcher pm = Pattern.compile("<nav:parent rdf:resource=\"(.*?)\"/>").matcher(line);
+            if (tm.find()) {
+                //System.out.println(tm.group(1));
+                result.put("title", (String) tm.group(1));
+            }
+            if (pm.find()) {
+                //System.out.println(pm.group(1));
+                result.put("parent", (String) pm.group(1));
+            }
+        }
+
+        return result;
     }
 
 }

@@ -42,7 +42,6 @@ import org.eclipse.lyo.client.oslc.resources.RmConstants;
 public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requirement
 {
 
-
     private final Set<URI> rdfTypes = new TreeSet<URI>();
     private final Map<QName, Object> extended = new HashMap<QName, Object>();
     private String sysmlid;
@@ -70,16 +69,24 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
     }
 
     public String getCustomField(URI property) {
-        return this.getExtendedProperties().get(new QName(property.toString())).toString();
+        try {
+            return this.getExtendedProperties().get(convertUriToQname(property)).toString();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public void setCustomField(URI property, Object value) {
-        extended.put(new QName(property.toString()), value);
+        extended.put(convertUriToQname(property), value);
         this.setExtendedProperties(extended);
     }
 
     public String getParent() {
-        return this.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER).toString();
+        Object parent = this.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER);
+        if (parent != null) {
+            return parent.toString();
+        }
+        return null;
     }
 
     public void setParent(final URI parent) {
@@ -101,6 +108,13 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
     public void setEtag(final String eTag) {
         this.eTag = eTag;
+    }
+
+    private static QName convertUriToQname(URI uri) {
+        String path = uri.getPath();
+        String last = path.substring(path.lastIndexOf('/') + 1);
+        String url = uri.toString().replace(last, "");
+        return new QName(url, last);
     }
 
 }
