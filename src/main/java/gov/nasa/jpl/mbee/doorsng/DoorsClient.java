@@ -319,33 +319,8 @@ public class DoorsClient {
         return null;
 
     }
-    /*
+
     public Folder getFolder(String resourceUrl) {
-
-        ClientResponse response;
-
-        try {
-
-            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
-
-            if(response.getStatusCode() == HttpStatus.SC_OK) {
-                Folder folder = response.getEntity(Folder.class);
-
-                return folder;
-
-            }
-
-        } catch (Exception e) {
-
-            logger.log(Level.SEVERE, e.getMessage(), e);
-
-        }
-
-        return new Folder();
-    }
-    */
-
-    public Map<String, String> getFolder(String resourceUrl) {
 
         ClientResponse response;
 
@@ -360,7 +335,7 @@ public class DoorsClient {
 
         }
 
-        return new HashMap<String, String>();
+        return new Folder();
     }
 
     public String create(Folder folder) {
@@ -517,9 +492,9 @@ public class DoorsClient {
 
     }
 
-    private static Map<String, String> processFolderQuery(ClientResponse response) throws IOException {
+    private static Folder processFolderQuery(ClientResponse response) throws IOException {
 
-        Map<String, String> result = new HashMap<String, String>();
+        Folder result = new Folder();
 
         InputStream is = response.getEntity(InputStream.class);
         BufferedReader in = new BufferedReader(new InputStreamReader(is));
@@ -530,12 +505,11 @@ public class DoorsClient {
             Matcher tm = Pattern.compile("<dcterms:title>(.*?)</dcterms:title>").matcher(line);
             Matcher pm = Pattern.compile("<nav:parent rdf:resource=\"(.*?)\"/>").matcher(line);
             if (tm.find()) {
-                //System.out.println(tm.group(1));
-                result.put("title", (String) tm.group(1));
+                result.setTitle((String) tm.group(1));
+                
             }
             if (pm.find()) {
-                //System.out.println(pm.group(1));
-                result.put("parent", (String) pm.group(1));
+                result.setParent(URI.create(pm.group(1)));
             }
         }
 
