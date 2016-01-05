@@ -12,9 +12,9 @@ package gov.nasa.jpl.mbee.doorsng;
  *
  * Contributors:
  *
- *	 Gabriel Ruelas	   - initial API and implementation
- *	 Carlos A Arreola	 - initial API and implementation
- *	 Samuel Padgett	   - avoid unnecessary URISyntaxException
+ *   Gabriel Ruelas    - initial API and implementation
+ *   Carlos A Arreola    - initial API and implementation
+ *   Samuel Padgett    - avoid unnecessary URISyntaxException
  *******************************************************************************/
 
 import java.net.URI;
@@ -50,10 +50,10 @@ public class Folder extends AbstractResource
     private final Map<QName, Object> extended = new HashMap<QName, Object>();
 
     private String title;
-	private String description;
-	private String identifier;
-	private final Set<URI>	  rdfTypes					= new TreeSet<URI>();
-	private URI	  serviceProvider;
+    private String description;
+    private String identifier;
+    private final Set<URI>    rdfTypes                  = new TreeSet<URI>();
+    private URI   serviceProvider;
 
     public Folder()
     {
@@ -65,24 +65,24 @@ public class Folder extends AbstractResource
         super(about);
     }
 
-	@OslcDescription("Title (reference: Dublin Core) or often a single line summary of the resource represented as rich text in XHTML content.")
-	@OslcOccurs(Occurs.ExactlyOne)
-	@OslcPropertyDefinition(OslcConstants.DCTERMS_NAMESPACE + "title")
-	@OslcTitle("Title")
-	@OslcValueType(ValueType.XMLLiteral)
-	public String getTitle()
-	{
-		return title;
-	}
+    @OslcDescription("Title (reference: Dublin Core) or often a single line summary of the resource represented as rich text in XHTML content.")
+    @OslcOccurs(Occurs.ExactlyOne)
+    @OslcPropertyDefinition(OslcConstants.DCTERMS_NAMESPACE + "title")
+    @OslcTitle("Title")
+    @OslcValueType(ValueType.XMLLiteral)
+    public String getTitle()
+    {
+        return title;
+    }
 
-	@OslcDescription("Descriptive text (reference: Dublin Core) about resource represented as rich text in XHTML content.")
-	@OslcPropertyDefinition(OslcConstants.DCTERMS_NAMESPACE + "description")
-	@OslcTitle("Description")
-	@OslcValueType(ValueType.XMLLiteral)
-	public String getDescription()
-	{
-		return description;
-	}
+    @OslcDescription("Descriptive text (reference: Dublin Core) about resource represented as rich text in XHTML content.")
+    @OslcPropertyDefinition(OslcConstants.DCTERMS_NAMESPACE + "description")
+    @OslcTitle("Description")
+    @OslcValueType(ValueType.XMLLiteral)
+    public String getDescription()
+    {
+        return description;
+    }
 
     public String getParent() {
         Object parent = this.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER);
@@ -92,15 +92,15 @@ public class Folder extends AbstractResource
         return null;
     }
 
-	public void setTitle(final String title)
-	{
-		this.title = title;
-	}
+    public void setTitle(final String title)
+    {
+        this.title = title;
+    }
 
-	public void setDescription(final String description)
-	{
-		this.description = description;
-	}
+    public void setDescription(final String description)
+    {
+        this.description = description;
+    }
 
     public void setParent(final URI parent) {
         extended.put(RmConstants.PROPERTY_PARENT_FOLDER, parent);

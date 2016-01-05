@@ -35,8 +35,8 @@ import org.eclipse.lyo.client.oslc.resources.RmConstants;
 @OslcResourceShape(title = "Requirement Collection Resource Shape", describes = RmConstants.TYPE_REQUIREMENT_COLLECTION)
 public final class RequirementCollection extends Requirement
 {
-	// The only extra field is uses
-	private final Set<URI> uses = new TreeSet<URI>();
+    // The only extra field is uses
+    private final Set<URI> uses = new TreeSet<URI>();
     private String[] sysmlids;
 
     public RequirementCollection()

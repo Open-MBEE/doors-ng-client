@@ -12,9 +12,9 @@ package gov.nasa.jpl.mbee.doorsng;
  *
  * Contributors:
  *
- *	 Gabriel Ruelas	   - initial API and implementation
- *	 Carlos A Arreola	 - initial API and implementation
- *	 Samuel Padgett	   - avoid unnecessary URISyntaxException
+ *   Gabriel Ruelas    - initial API and implementation
+ *   Carlos A Arreola    - initial API and implementation
+ *   Samuel Padgett    - avoid unnecessary URISyntaxException
  *******************************************************************************/
 
 import java.net.URI;

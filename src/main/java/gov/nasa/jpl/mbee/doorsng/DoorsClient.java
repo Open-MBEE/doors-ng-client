@@ -441,7 +441,7 @@ public class DoorsClient {
 
         Set<Requirement> req = new HashSet<Requirement>();
 
-		do {
+        do {
 
             for (String resultsUrl : result.getMembersUrls()) {
                 ClientResponse response = null;
@@ -465,13 +465,13 @@ public class DoorsClient {
 
             }
 
-			if (result.hasNext()) {
-				result = result.next();
-			} else {
-				break;
-			}
+            if (result.hasNext()) {
+                result = result.next();
+            } else {
+                break;
+            }
 
-		} while(true);
+        } while(true);
 
         return req.toArray(new Requirement[req.size()]);
 
@@ -506,7 +506,7 @@ public class DoorsClient {
             Matcher pm = Pattern.compile("<nav:parent rdf:resource=\"(.*?)\"/>").matcher(line);
             if (tm.find()) {
                 result.setTitle((String) tm.group(1));
-                
+
             }
             if (pm.find()) {
                 result.setParent(URI.create(pm.group(1)));
