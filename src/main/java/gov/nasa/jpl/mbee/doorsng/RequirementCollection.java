@@ -1,5 +1,4 @@
 package gov.nasa.jpl.mbee.doorsng;
-
 /*******************************************************************************
  * Copyright (c) 2013, 2015 IBM Corporation.
  *
@@ -17,7 +16,6 @@ package gov.nasa.jpl.mbee.doorsng;
  *     Carlos A Arreola     - initial API and implementation
  *     Samuel Padgett       - avoid unnecessary URISyntaxException
  *******************************************************************************/
-import org.eclipse.lyo.client.oslc.resources.*;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -31,24 +29,24 @@ import org.eclipse.lyo.oslc4j.core.annotation.OslcPropertyDefinition;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcRange;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcResourceShape;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcTitle;
-
+import org.eclipse.lyo.client.oslc.resources.RmConstants;
 
 @OslcNamespace(RmConstants.REQUIREMENTS_MANAGEMENT_NAMESPACE)
 @OslcResourceShape(title = "Requirement Collection Resource Shape", describes = RmConstants.TYPE_REQUIREMENT_COLLECTION)
-public final class CustomRequirementCollection
-       extends CustomRequirement
+public final class RequirementCollection extends Requirement
 {
     // The only extra field is uses
-    private final Set<URI>      uses     = new TreeSet<URI>();
+    private final Set<URI> uses = new TreeSet<URI>();
+    private String[] sysmlids;
 
-    public CustomRequirementCollection()
+    public RequirementCollection()
     {
         super();
 
         addRdfType(URI.create(RmConstants.TYPE_REQUIREMENT_COLLECTION));
     }
 
-    public CustomRequirementCollection(final URI about)
+    public RequirementCollection(final URI about)
     {
         super(about);
 
@@ -80,4 +78,7 @@ public final class CustomRequirementCollection
         }
     }
 
+    public void clearUses() {
+        this.uses.clear();
+    }
 }
