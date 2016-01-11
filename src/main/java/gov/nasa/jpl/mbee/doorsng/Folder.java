@@ -52,6 +52,7 @@ public class Folder extends AbstractResource
     private String title;
     private String description;
     private String identifier;
+    private String resourceUrl;
     private final Set<URI>    rdfTypes                  = new TreeSet<URI>();
     private URI   serviceProvider;
 
@@ -105,6 +106,14 @@ public class Folder extends AbstractResource
     public void setParent(final URI parent) {
         extended.put(RmConstants.PROPERTY_PARENT_FOLDER, parent);
         this.setExtendedProperties(extended);
+    }
+
+    public String getResourceUrl() {
+        return resourceUrl;
+    }
+
+    public void setResourceUrl(final String resourceUrl) {
+        this.resourceUrl = resourceUrl;
     }
 
 }

@@ -502,11 +502,14 @@ public class DoorsClient {
         String line = null;
 
         while ((line = in.readLine()) != null) {
+            Matcher rm = Pattern.compile("<nav:folder rdf:about=\"(.*?)\">").matcher(line);
             Matcher tm = Pattern.compile("<dcterms:title>(.*?)</dcterms:title>").matcher(line);
             Matcher pm = Pattern.compile("<nav:parent rdf:resource=\"(.*?)\"/>").matcher(line);
+            if (rm.find()) {
+                result.setResourceUrl((String) rm.group(1));
+            }
             if (tm.find()) {
                 result.setTitle((String) tm.group(1));
-
             }
             if (pm.find()) {
                 result.setParent(URI.create(pm.group(1)));
