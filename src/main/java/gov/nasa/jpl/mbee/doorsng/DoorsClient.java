@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Level;
@@ -243,6 +242,7 @@ public class DoorsClient {
     public RequirementCollection getRequirementCollection(String resourceUrl) {
 
         ClientResponse response = null;
+
         try {
 
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);

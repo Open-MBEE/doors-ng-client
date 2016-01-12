@@ -2,6 +2,11 @@
 build/
 target/
 *.properties
+<<<<<<< HEAD
 .project
 .classpath
 .settings
+=======
+.classpath
+.project
+>>>>>>> refs/remotes/origin/master
