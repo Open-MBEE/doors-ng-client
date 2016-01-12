@@ -20,45 +20,33 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLDecoder;
-
-import java.util.Map;
 import java.util.HashMap;
-import java.util.Set;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
-import java.util.ArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.namespace.QName;
 
-import org.apache.http.HttpStatus;
 import org.apache.http.HttpHeaders;
-import org.apache.http.HttpRequest;
-import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.wink.client.ClientResponse;
-import org.eclipse.lyo.oslc4j.core.model.Link;
-import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
-import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
-import org.eclipse.lyo.oslc4j.core.model.OslcConstants;
-import org.eclipse.lyo.oslc4j.core.model.Property;
-import org.eclipse.lyo.client.exception.RootServicesException;
-import org.eclipse.lyo.client.exception.ResourceNotFoundException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
-import org.eclipse.lyo.client.oslc.OslcClient;
 import org.eclipse.lyo.client.oslc.jazz.JazzFormAuthClient;
 import org.eclipse.lyo.client.oslc.jazz.JazzRootServicesHelper;
 import org.eclipse.lyo.client.oslc.resources.OslcQuery;
-import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryResult;
-import org.eclipse.lyo.client.oslc.resources.RmUtil;
 import org.eclipse.lyo.client.oslc.resources.RmConstants;
+import org.eclipse.lyo.client.oslc.resources.RmUtil;
+import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
+import org.eclipse.lyo.oslc4j.core.model.Property;
+import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 /**
  * Samples of logging in to Rational Requirements Composer and running OSLC
  * operations
@@ -128,8 +116,8 @@ public class DoorsClient {
             String[] serviceProviderPath = serviceProvider.getPath().split("/");
 
             queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
-            requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE));
-            requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE));
+            requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE), "UTF-8");
+            requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE), "UTF-8");
             rootFolder = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" + serviceProviderPath[serviceProviderPath.length - 2];
             folderQuery = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2];
             folderFactory = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + serviceProviderPath[serviceProviderPath.length - 2];
@@ -213,7 +201,6 @@ public class DoorsClient {
     public String update(Requirement requirement) {
 
         ClientResponse response;
-        Integer status = null;
 
         requirement.setInstanceShape(featureInstanceShape.getAbout());
         Requirement check = getRequirement(requirement.getResourceUrl());
@@ -241,6 +228,7 @@ public class DoorsClient {
     public RequirementCollection getRequirementCollection(String resourceUrl) {
 
         ClientResponse response = null;
+
         try {
 
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
@@ -293,7 +281,6 @@ public class DoorsClient {
     public String update(RequirementCollection collection) {
 
         ClientResponse response;
-        Integer status = null;
 
         collection.setInstanceShape(collectionInstanceShape.getAbout());
 
@@ -343,7 +330,11 @@ public class DoorsClient {
 
         String parentFolder = rootFolder;
         if (folder.getParent() != null) {
-            parentFolder = URLDecoder.decode(folder.getParent());
+            try {
+                parentFolder = URLDecoder.decode(folder.getParent(), "UTF-8");
+            } catch (Exception e) {
+            e.printStackTrace();
+            }
         }
 
         String xml = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:oslc=\"http://open-services.net/ns/core\" xmlns:nav=\"http://jazz.net/ns/rm/navigation\" xmlns:calm=\"http://jazz.net/xmlns/prod/jazz/calm/1.0/\"><nav:folder rdf:about=\"\"><dcterms:title>" + folder.getTitle() + "</dcterms:title> <dcterms:description>" + folder.getDescription() + "</dcterms:description><nav:parent rdf:resource=\"" + parentFolder + "\"/></nav:folder></rdf:RDF>";
@@ -474,21 +465,6 @@ public class DoorsClient {
         } while(true);
 
         return req.toArray(new Requirement[req.size()]);
-
-    }
-
-    private static void processRawResponse(ClientResponse response) throws IOException {
-
-        InputStream is = response.getEntity(InputStream.class);
-        BufferedReader in = new BufferedReader(new InputStreamReader(is));
-
-        String line = null;
-
-        while ((line = in.readLine()) != null) {
-            System.out.println(line);
-        }
-
-        System.out.println();
 
     }
 

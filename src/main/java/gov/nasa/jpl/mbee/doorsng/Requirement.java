@@ -18,24 +18,16 @@ package gov.nasa.jpl.mbee.doorsng;
  *******************************************************************************/
 
 import java.net.URI;
-import java.util.Set;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 
 import javax.xml.namespace.QName;
 
-import org.eclipse.lyo.oslc4j.core.annotation.OslcDescription;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcName;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcNamespace;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcOccurs;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcPropertyDefinition;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcResourceShape;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcTitle;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcValueType;
-import org.eclipse.lyo.oslc4j.core.model.Occurs;
-import org.eclipse.lyo.oslc4j.core.model.ValueType;
 import org.eclipse.lyo.client.oslc.resources.RmConstants;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcNamespace;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcResourceShape;
 
 @OslcNamespace(RmConstants.REQUIREMENTS_MANAGEMENT_NAMESPACE)
 @OslcResourceShape(title = "Requirement Resource Shape", describes = RmConstants.TYPE_REQUIREMENT)
@@ -44,7 +36,6 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
     private final Set<URI> rdfTypes = new TreeSet<URI>();
     private final Map<QName, Object> extended = new HashMap<QName, Object>();
-    private String sysmlid;
     private String resourceUrl;
     private String eTag;
 

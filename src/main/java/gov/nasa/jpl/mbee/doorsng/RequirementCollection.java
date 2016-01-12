@@ -37,7 +37,6 @@ public final class RequirementCollection extends Requirement
 {
     // The only extra field is uses
     private final Set<URI> uses = new TreeSet<URI>();
-    private String[] sysmlids;
 
     public RequirementCollection()
     {
