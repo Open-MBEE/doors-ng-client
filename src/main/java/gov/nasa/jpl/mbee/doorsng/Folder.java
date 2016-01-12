@@ -18,29 +18,23 @@ package gov.nasa.jpl.mbee.doorsng;
  *******************************************************************************/
 
 import java.net.URI;
-import java.util.Arrays;
-import java.util.Map;
 import java.util.HashMap;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.Map;
 
 import javax.xml.namespace.QName;
 
+import org.eclipse.lyo.client.oslc.resources.RmConstants;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcDescription;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcName;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcNamespace;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcOccurs;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcPropertyDefinition;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcRange;
-import org.eclipse.lyo.oslc4j.core.annotation.OslcReadOnly;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcResourceShape;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcTitle;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcValueType;
-import org.eclipse.lyo.oslc4j.core.model.Occurs;
-import org.eclipse.lyo.oslc4j.core.model.ValueType;
 import org.eclipse.lyo.oslc4j.core.model.AbstractResource;
+import org.eclipse.lyo.oslc4j.core.model.Occurs;
 import org.eclipse.lyo.oslc4j.core.model.OslcConstants;
-import org.eclipse.lyo.client.oslc.resources.RmConstants;
+import org.eclipse.lyo.oslc4j.core.model.ValueType;
 
 @OslcNamespace(OslcConstants.OSLC_CORE_NAMESPACE)
 @OslcResourceShape(title = "Folder Resource Shape", describes = {"http://open-services.net/ns/core", "http://jazz.net/ns/rm/navigation, http://jazz.net/xmlns/prod/jazz/calm/1.0"})
@@ -51,10 +45,7 @@ public class Folder extends AbstractResource
 
     private String title;
     private String description;
-    private String identifier;
     private String resourceUrl;
-    private final Set<URI>    rdfTypes                  = new TreeSet<URI>();
-    private URI   serviceProvider;
 
     public Folder()
     {

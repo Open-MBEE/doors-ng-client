@@ -2,3 +2,6 @@
 build/
 target/
 *.properties
+.project
+.classpath
+.settings
