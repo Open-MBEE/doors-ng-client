@@ -24,6 +24,7 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -41,6 +42,7 @@ import org.eclipse.lyo.client.oslc.OSLCConstants;
 import org.eclipse.lyo.client.oslc.jazz.JazzFormAuthClient;
 import org.eclipse.lyo.client.oslc.jazz.JazzRootServicesHelper;
 import org.eclipse.lyo.client.oslc.resources.OslcQuery;
+import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryResult;
 import org.eclipse.lyo.client.oslc.resources.RmConstants;
 import org.eclipse.lyo.client.oslc.resources.RmUtil;
@@ -89,6 +91,7 @@ public class DoorsClient {
     private static ResourceShape collectionInstanceShape;
     private static URI folderAbout;
     private static Map<String, URI> projectProperties = new HashMap<String, URI>();
+    private static Map<String, String> projectPropertiesDetails = new HashMap<String, String>();
 
     private static final String webContextUrl = properties.getProperty("url");
     private static final String user = properties.getProperty("service_account");
@@ -169,6 +172,17 @@ public class DoorsClient {
 
         return reqs;
 
+    }
+
+    public Requirement[] queryRequirements(String field, String value) {
+
+        Map<String, String> params = new HashMap<String, String>();
+        params.put(field, value);
+
+        OslcQueryResult result = getQuery(params);
+        Requirement[] reqs = processRequirements(result);
+
+        return reqs;
     }
 
     public String create(Requirement requirement) {
@@ -423,9 +437,42 @@ public class DoorsClient {
 
         for (Property property : properties) {
             projectProperties.put(property.getTitle(), property.getPropertyDefinition());
+            projectPropertiesDetails.put(property.getTitle(), property.getName());
         }
 
         return projectProperties;
+    }
+
+    private OslcQueryResult getQuery(Map<String, String> params) {
+
+        if(projectPropertiesDetails.isEmpty()) {
+            getFields();
+        }
+
+        OslcQueryParameters queryParams = new OslcQueryParameters();
+        String prefix = "";
+        String where = "";
+
+        if (params.get("name") != null) {
+            prefix = "dcterms=<http://purl.org/dc/terms/>";
+            where = String.format("dcterms:title=\"%s\"", params.get("name"));
+        } else {
+            Iterator it = params.entrySet().iterator();
+            if (it.hasNext()) {
+                Map.Entry pair = (Map.Entry) it.next();
+                prefix = "rm_property=<" + properties.getProperty("url") + "/rm/types/>";
+                where = String.format("rm_property:%s=\"%s\"", projectPropertiesDetails.get((String) pair.getValue()), (String) pair.getKey());
+            }
+        }
+
+        queryParams.setPrefix(prefix);
+        queryParams.setWhere(where);
+
+        OslcQuery query = new OslcQuery(client, queryCapability, 20, queryParams);
+        OslcQueryResult result = query.submit();
+
+        return result;
+
     }
 
     private static Requirement[] processRequirements(OslcQueryResult result) {
