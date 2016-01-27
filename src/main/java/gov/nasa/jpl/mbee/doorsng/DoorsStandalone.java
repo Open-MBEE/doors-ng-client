@@ -64,45 +64,45 @@ public class DoorsStandalone {
                     response = mapper.writeValueAsString(reqs);
                 }
             }
-            
+
             if ("create".equals(action)) {
-        	if (requirement != null) {
-        	    JsonNode jn = mapper.readTree(requirement);
-        	    Requirement req = new Requirement();
+                if (requirement != null) {
+                    JsonNode jn = mapper.readTree(requirement);
+                    Requirement req = new Requirement();
                     Iterator it = jn.elements();
                     if (it.hasNext()) {
                         Map.Entry pair = (Map.Entry) it.next();
                         req.setCustomField( doors.getField((String) pair.getKey()), (String) pair.getValue());
                     }
                     response = mapper.writeValueAsString(doors.create(req));
-        	} else if (collection != null) {
-        	    JsonNode jn = mapper.readTree(collection);
-        	    RequirementCollection reqCol = new RequirementCollection();
-            	    reqCol.setTitle(jn.get("title").toString());
+                } else if (collection != null) {
+                    JsonNode jn = mapper.readTree(collection);
+                    RequirementCollection reqCol = new RequirementCollection();
+                    reqCol.setTitle(jn.get("title").toString());
                     JsonNode uses = jn.get("uses");
                     if (uses.isArray()) {
-                        ArrayList<URI> allUses = new ArrayList<URI>();		
+                        ArrayList<URI> allUses = new ArrayList<URI>();
                         for (JsonNode use : uses) {
                             allUses.add(URI.create(use.toString()));
                         }
                         reqCol.setUses(allUses.toArray(new URI[allUses.size()]));
                     }
                     response = mapper.writeValueAsString(doors.create(reqCol));
-        	}
+                }
             }
             //TODO: Finish update functions
             if ("update".equals(action)) {
-        	if (requirement != null) {
-        	    JsonNode jn = mapper.readTree(requirement);
-        	    
-        	} else if (collection != null) {
-        	    JsonNode jn = mapper.readTree(collection);
-        	    
-        	}
+            if (requirement != null) {
+                JsonNode jn = mapper.readTree(requirement);
+
+            } else if (collection != null) {
+                JsonNode jn = mapper.readTree(collection);
+
             }
-            
+            }
+
             if ("delete".equals(action)) {
-        	response = mapper.writeValueAsString(doors.delete(resource));
+            response = mapper.writeValueAsString(doors.delete(resource));
             }
 
         } catch (Exception e) {
@@ -114,18 +114,18 @@ public class DoorsStandalone {
     }
 
     private static boolean validateOptions(CommandLine cmd) {
-	
-	String action = cmd.getOptionValue("action");
+
+    String action = cmd.getOptionValue("action");
 
         if (action != null && cmd.hasOption("project")) {
             if ("create".equals(action) && (cmd.hasOption("requirement") || cmd.hasOption("collection"))) {
-        	return true;
+            return true;
             } else if ("update".equals(action) && (cmd.hasOption("requirement") || cmd.hasOption("collection"))) {
-        	return true;
+            return true;
             } else if ("delete".equals(action) && cmd.hasOption("resource")) {
-        	return true;
+            return true;
             } else if ("get".equals(action)) {
-        	return true;
+            return true;
             }
         }
 
