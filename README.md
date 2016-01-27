@@ -11,7 +11,7 @@ This client uses the Eclipse Lyo Client to connect to a Doors NG instance. Allow
 ```
 java -cp doorsng-jar-with-dependencies.jar gov.nasa.jpl.mbee.doorsng.DoorsStandalone -project "europa" -action "get"
 ```
-OR
+OR just
 ```
 java -jar doorsng-jar-with-dependencies.jar -project "europa" -action "get"
 ```
