@@ -175,10 +175,10 @@ public class DoorsClient {
     }
 
     public Requirement[] queryRequirements(String field, String value) {
-	
-	Map<String, String> params = new HashMap<>();
+
+        Map<String, String> params = new HashMap<String, String>();
         params.put(field, value);
-        
+
         OslcQueryResult result = getQuery(params);
         Requirement[] reqs = processRequirements(result);
 
@@ -347,7 +347,7 @@ public class DoorsClient {
             try {
                 parentFolder = URLDecoder.decode(folder.getParent(), "UTF-8");
             } catch (Exception e) {
-        	e.printStackTrace();
+            e.printStackTrace();
             }
         }
 
@@ -442,13 +442,13 @@ public class DoorsClient {
 
         return projectProperties;
     }
-    
+
     private OslcQueryResult getQuery(Map<String, String> params) {
 
         if(projectPropertiesDetails.isEmpty()) {
             getFields();
         }
-        
+
         OslcQueryParameters queryParams = new OslcQueryParameters();
         String prefix = "";
         String where = "";
