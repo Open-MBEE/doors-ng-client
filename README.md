@@ -7,5 +7,8 @@ This client uses the Eclipse Lyo Client to connect to a Doors NG instance. Allow
 - Run `mvn package` or `mvn install`
 
 ## Execute CLI
-- If you need it, the main CLI class is gov.nasa.jpl.mbee.doorsng.DoorsStandalone.
-- You can execute `java -jar doorsng-jar-with-dependencies.jar -project "europa" -action "get"`
+- If you need it, the main CLI class is `gov.nasa.jpl.mbee.doorsng.DoorsStandalone`.
+- You can execute:
+```
+java -jar doorsng-jar-with-dependencies.jar -project "europa" -action "get"
+```
