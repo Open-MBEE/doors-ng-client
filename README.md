@@ -4,4 +4,8 @@ This client uses the Eclipse Lyo Client to connect to a Doors NG instance. Allow
 ## Installation
 - Copy doors.properties.example to doors.properties and edit with correct values
 - (Optional) Copy log4j.properties.example to log4j.properties and edit
-- To build a self contained jar run `mvn assembly:assembly`. Otherwise, run `mvn install`. Or whatever.
+- Run `mvn package` or `mvn install`
+
+## Execute CLI
+- If you need it, the main CLI class is gov.nasa.jpl.mbee.doorsng.DoorsStandalone.
+- You can execute `java -jar doorsng-jar-with-dependencies.jar -project "europa" -action "get"`
