@@ -21,11 +21,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Level;
@@ -63,12 +65,13 @@ public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
     private static Properties properties = new Properties();
+    private static URL propfile = ClassLoader.getSystemResource("doors.properties");
 
     static {
 
         try {
 
-            properties.load(DoorsClient.class.getResourceAsStream("/doors.properties"));
+            properties.load(propfile.openStream());
 
         } catch (IOException e) {
 
@@ -77,7 +80,7 @@ public class DoorsClient {
         }
     }
 
-    private static final QName PROPERTY_PRIMARY_TEXT_WORKAROUND = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
+    //private static final QName PROPERTY_PRIMARY_TEXT_WORKAROUND = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
 
     private static JazzFormAuthClient client;
     private static JazzRootServicesHelper helper;
@@ -85,11 +88,11 @@ public class DoorsClient {
     private static String requirementCollectionFactory;
     private static String queryCapability;
     private static String rootFolder;
-    private static String folderQuery;
+    //private static String folderQuery;
     private static String folderFactory;
     private static ResourceShape featureInstanceShape;
     private static ResourceShape collectionInstanceShape;
-    private static URI folderAbout;
+    //private static URI folderAbout;
     private static Map<String, URI> projectProperties = new HashMap<String, URI>();
     private static Map<String, String> projectPropertiesDetails = new HashMap<String, String>();
 
@@ -122,12 +125,12 @@ public class DoorsClient {
             requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE), "UTF-8");
             requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE), "UTF-8");
             rootFolder = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" + serviceProviderPath[serviceProviderPath.length - 2];
-            folderQuery = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2];
+            //folderQuery = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  serviceProviderPath[serviceProviderPath.length - 2];
             folderFactory = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + serviceProviderPath[serviceProviderPath.length - 2];
 
             featureInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE, client, "Requirement");
             collectionInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, client, "Requirement Collection");
-            folderAbout = URI.create(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/");
+            //folderAbout = URI.create(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/");
 
         } catch (Exception e) {
             return;
@@ -380,7 +383,7 @@ public class DoorsClient {
         if (folder.getParent() != null) {
             parentFolder = URLDecoder.decode(folder.getParent());
         }
-        //folder.setInstanceShape(folderAbout);
+        folder.setInstanceShape(folderAbout);
 
         try {
 
@@ -457,9 +460,9 @@ public class DoorsClient {
             prefix = "dcterms=<http://purl.org/dc/terms/>";
             where = String.format("dcterms:title=\"%s\"", params.get("name"));
         } else {
-            Iterator it = params.entrySet().iterator();
+            Iterator<Entry<String, String>> it = params.entrySet().iterator();
             if (it.hasNext()) {
-                Map.Entry pair = (Map.Entry) it.next();
+                Entry<String, String> pair = it.next();
                 prefix = "rm_property=<" + properties.getProperty("url") + "/rm/types/>";
                 where = String.format("rm_property:%s=\"%s\"", projectPropertiesDetails.get((String) pair.getValue()), (String) pair.getKey());
             }
@@ -514,7 +517,43 @@ public class DoorsClient {
         return req.toArray(new Requirement[req.size()]);
 
     }
+    /*
+    private static Stream<Requirement> streamRequirements(OslcQueryResult result) {
 
+        do {
+
+            for (String resultsUrl : result.getMembersUrls()) {
+                ClientResponse response = null;
+                try {
+
+                    response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
+
+                    if(response.getStatusCode() == HttpStatus.SC_OK) {
+                        Requirement res = response.getEntity(Requirement.class);
+                        res.setResourceUrl(resultsUrl);
+                        res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+                        return res.stream();
+                    }
+
+                } catch (Exception e) {
+
+                    e.printStackTrace();
+                    logger.log(Level.SEVERE, e.getMessage(), e);
+
+                }
+
+            }
+
+            if (result.hasNext()) {
+                result = result.next();
+            } else {
+                break;
+            }
+
+        } while(true);
+
+    }
+    */
     private static Folder processFolderQuery(ClientResponse response) throws IOException {
 
         Folder result = new Folder();
