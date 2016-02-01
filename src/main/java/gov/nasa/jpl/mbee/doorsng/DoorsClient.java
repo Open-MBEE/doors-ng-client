@@ -65,13 +65,12 @@ public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
     private static Properties properties = new Properties();
-    private static URL propfile = ClassLoader.getSystemResource("doors.properties");
 
     static {
 
         try {
 
-            properties.load(propfile.openStream());
+            properties.load(DoorsClient.class.getResourceAsStream("/doors.properties"));
 
         } catch (IOException e) {
 

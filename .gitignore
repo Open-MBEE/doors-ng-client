@@ -1,7 +1,7 @@
 .gradle
 build/
 target/
-*.properties
+doors.properties
 .project
 .classpath
 .settings
