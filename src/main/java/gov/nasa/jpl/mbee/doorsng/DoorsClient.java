@@ -79,8 +79,6 @@ public class DoorsClient {
         }
     }
 
-    //private static final QName PROPERTY_PRIMARY_TEXT_WORKAROUND = new QName(RmConstants.JAZZ_RM_NAMESPACE, "PrimaryText");
-
     private static JazzFormAuthClient client;
     private static JazzRootServicesHelper helper;
     private static String requirementFactory;
@@ -92,14 +90,17 @@ public class DoorsClient {
     private static ResourceShape featureInstanceShape;
     private static ResourceShape collectionInstanceShape;
     //private static URI folderAbout;
-    private static Map<String, URI> projectProperties = new HashMap<String, URI>();
-    private static Map<String, String> projectPropertiesDetails = new HashMap<String, String>();
+    private static Map<String, URI> projectProperties = null;
+    private static Map<String, String> projectPropertiesDetails = null;
 
     private static final String webContextUrl = properties.getProperty("url");
     private static final String user = properties.getProperty("service_account");
     private static final String password = properties.getProperty("service_password");
 
     public DoorsClient(String projectArea) throws Exception {
+
+        projectProperties = new HashMap<String, URI>();
+        projectPropertiesDetails = new HashMap<String, String>();
 
         helper = new JazzRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
         String authUrl = webContextUrl.replaceFirst("/rm", "/jts");

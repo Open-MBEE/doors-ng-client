@@ -72,6 +72,19 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
         this.setExtendedProperties(extended);
     }
 
+    public String getPrimaryText() {
+        try {
+            return this.getExtendedProperties().get(RmConstants.PROPERTY_PRIMARY_TEXT).toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public void setPrimaryText(final String primaryText) {
+        extended.put(RmConstants.PROPERTY_PRIMARY_TEXT, primaryText);
+        this.setExtendedProperties(extended);
+    }
+
     public String getParent() {
         Object parent = this.getExtendedProperties().get(RmConstants.PROPERTY_PARENT_FOLDER);
         if (parent != null) {
