@@ -74,8 +74,6 @@ public class DoorsClient {
 
         } catch (IOException e) {
 
-            throw new RuntimeException(e);
-
         }
     }
 
@@ -93,11 +91,13 @@ public class DoorsClient {
     private static Map<String, URI> projectProperties = null;
     private static Map<String, String> projectPropertiesDetails = null;
 
-    private static final String webContextUrl = properties.getProperty("url");
-    private static final String user = properties.getProperty("service_account");
-    private static final String password = properties.getProperty("service_password");
-
     public DoorsClient(String projectArea) throws Exception {
+
+        this(properties.getProperty("service_account"), properties.getProperty("service_password"), properties.getProperty("url"), projectArea);
+
+    }
+
+    public DoorsClient(String user, String password, String webContextUrl, String projectArea) throws Exception {
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
@@ -223,7 +223,6 @@ public class DoorsClient {
         Requirement check = getRequirement(requirement.getResourceUrl());
 
         try {
-
             response = client.updateResource(requirement.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
             response.consumeContent();
 
