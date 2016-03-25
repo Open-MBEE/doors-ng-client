@@ -41,7 +41,7 @@ import org.eclipse.lyo.oslc4j.core.model.ValueType;
 public class Folder extends AbstractResource
 {
 
-    private final Map<QName, Object> extended = new HashMap<QName, Object>();
+    private Map<QName, Object> extended = new HashMap<QName, Object>();
 
     private String title;
     private String description;

@@ -72,7 +72,7 @@ public class DoorsClient {
 
             properties.load(DoorsClient.class.getResourceAsStream("/doors.properties"));
 
-        } catch (IOException e) {
+        } catch (Exception e) {
 
         }
     }
@@ -88,6 +88,7 @@ public class DoorsClient {
     private static ResourceShape featureInstanceShape;
     private static ResourceShape collectionInstanceShape;
     //private static URI folderAbout;
+    private static String doorsUrl;
     private static Map<String, URI> projectProperties = null;
     private static Map<String, String> projectPropertiesDetails = null;
 
@@ -101,6 +102,8 @@ public class DoorsClient {
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
+
+        doorsUrl = webContextUrl;
 
         helper = new JazzRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
         String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
@@ -349,7 +352,7 @@ public class DoorsClient {
             try {
                 parentFolder = URLDecoder.decode(folder.getParent(), "UTF-8");
             } catch (Exception e) {
-            e.printStackTrace();
+                e.printStackTrace();
             }
         }
 
@@ -462,7 +465,7 @@ public class DoorsClient {
             Iterator<Entry<String, String>> it = params.entrySet().iterator();
             if (it.hasNext()) {
                 Entry<String, String> pair = it.next();
-                prefix = "rm_property=<" + properties.getProperty("url") + "/rm/types/>";
+                prefix = "rm_property=<" + doorsUrl + "/rm/types/>";
                 where = String.format("rm_property:%s=\"%s\"", projectPropertiesDetails.get((String) pair.getValue()), (String) pair.getKey());
             }
         }

@@ -35,7 +35,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 {
 
     private final Set<URI> rdfTypes = new TreeSet<URI>();
-    private final Map<QName, Object> extended = new HashMap<QName, Object>();
+    private Map<QName, Object> extended = new HashMap<QName, Object>();
     private String resourceUrl;
     private String eTag;
 
