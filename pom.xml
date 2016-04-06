@@ -18,20 +18,20 @@
       </snapshots>
       <id>artifactory</id>
       <name>libs-release</name>
-      <url>http://europambee-build.jpl.nasa.gov:8082/artifactory/ext-release-local</url>
+      <url>http://cae-artrepo.jpl.nasa.gov/artifactory/ext-release-local</url>
     </repository>
     <repository>
       <snapshots />
       <id>artifactory-snapshots</id>
       <name>libs-snapshot</name>
-      <url>http://europambee-build.jpl.nasa.gov:8082/artifactory/ext-snapshot-local</url>
+      <url>http://cae-artrepo.jpl.nasa.gov/artifactory/ext-snapshot-local</url>
     </repository>
   </repositories>
   <dependencies>
     <dependency>
       <groupId>org.eclipse.lyo.clients</groupId>
       <artifactId>oslc-java-client</artifactId>
-      <version>3.0.0-20151223.221014-3</version>
+      <version>3.0.0-20160406.182218-1</version>
     </dependency>
     <dependency>
       <groupId>xml-apis</groupId>
