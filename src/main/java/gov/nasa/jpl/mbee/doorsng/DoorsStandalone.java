@@ -16,6 +16,9 @@ import org.apache.commons.cli.ParseException;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
+import gov.nasa.jpl.mbee.doorsng.model.Requirement;
+import gov.nasa.jpl.mbee.doorsng.model.Folder;
+
 public class DoorsStandalone {
 
     private static final Logger logger = Logger.getLogger(DoorsStandalone.class.getName());
@@ -24,6 +27,8 @@ public class DoorsStandalone {
 
         Options options = new Options();
 
+        options.addOption("consumer", true, "consumer key");
+        options.addOption("secret", true, "consumer secret");
         options.addOption("user", true, "username");
         options.addOption("pass", true, "password");
         options.addOption("url", true, "doors url");
@@ -36,12 +41,14 @@ public class DoorsStandalone {
         CommandLine cmd = cliParser.parse(options, args);
 
         if (!validateOptions(cmd)) {
-            System.out.println("Syntax:  java -jar <jar file> -action \"(create || read || update || delete)\" -user \"<username>\" -pass \"<password>\" -url \"<doors_url>\" -project \"<project_area>\" (-requirement <json> || <resourceUrl>)");
-            System.out.println("Example: java -jar target/doorsng-x.x.x.jar -action \"create\" -user \"JPLUSERNAME\" -pass \"JPLPASSWORD\" -url \"DOORSURL\" -project \"Test Project\" -requirement {\"title\":\"Requirement 01\", \"sysmlid\":\"123-456-678\"}");
+            System.out.println("Syntax:  java -jar <jar file> -action \"(create || read || update || delete)\" -consumer \"<consumerKey>\" -secret \"<consumerSecret>\" -user \"<username>\" -pass \"<password>\" -url \"<doors_url>\" -project \"<project_area>\" (-requirement <json> || <resourceUrl>)");
+            System.out.println("Example: java -jar target/doorsng-x.x.x.jar -action \"create\" -consumer \"CONSUMERKEY\" -secret \"CONSUMERSECRET\" -user \"JPLUSERNAME\" -pass \"JPLPASSWORD\" -url \"DOORSURL\" -project \"Test Project\" -requirement {\"title\":\"Requirement 01\", \"sysmlid\":\"123-456-678\"}");
             return;
         }
 
         String action = cmd.getOptionValue("action");
+        String consumer = cmd.getOptionValue("consumer");
+        String secret = cmd.getOptionValue("secret");
         String user = cmd.getOptionValue("user");
         String pass = cmd.getOptionValue("pass");
         String url = cmd.getOptionValue("url");
@@ -52,7 +59,7 @@ public class DoorsStandalone {
 
         try {
 
-            DoorsClient doors = new DoorsClient(user, pass, url, project);
+            DoorsClient doors = new DoorsClient(consumer, secret, user, pass, url, project);
 
             if ("read".equals(action)) {
                 if (requirement != null) {
@@ -136,6 +143,8 @@ public class DoorsStandalone {
 
         if (
             action != null &&
+            cmd.getOptionValue("consumer") != null &&
+            cmd.getOptionValue("secret") != null &&
             cmd.getOptionValue("user") != null &&
             cmd.getOptionValue("pass") != null &&
             cmd.getOptionValue("url") != null &&

@@ -1,20 +1,4 @@
 package gov.nasa.jpl.mbee.doorsng;
-/*******************************************************************************
- * Copyright (c) 2012, 2014 IBM Corporation.
- *
- *  All rights reserved. This program and the accompanying materials
- *  are made available under the terms of the Eclipse Public License v1.0
- *  and Eclipse Distribution License v. 1.0 which accompanies this distribution.
- *
- *  The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
- *  and the Eclipse Distribution License is available at
- *  http://www.eclipse.org/org/documents/edl-v10.php.
- *
- *  Contributors:
- *
- *     Michael Fiedler     - initial API and implementation
- *     Gabriel Ruelas      - Fix handling of Rich text, include parsing extended properties
- *******************************************************************************/
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -26,6 +10,8 @@ import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -37,11 +23,22 @@ import java.util.regex.Pattern;
 
 import javax.xml.namespace.QName;
 
+import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpStatus;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.auth.InvalidCredentialsException;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.params.HttpClientParams;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HTTP;
+import org.apache.http.util.EntityUtils;
 import org.apache.wink.client.ClientResponse;
+import org.eclipse.lyo.client.oslc.OAuthRedirectException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
-import org.eclipse.lyo.client.oslc.jazz.JazzRootServicesHelper;
 import org.eclipse.lyo.client.oslc.resources.OslcQuery;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryResult;
@@ -51,71 +48,53 @@ import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
 import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 
-/**
- * Samples of logging in to Rational Requirements Composer and running OSLC
- * operations
- *
- *
- * - run an OLSC Requirement query and retrieve OSLC Requirements and
- * de-serialize them as Java objects - TODO: Add more requirement sample
- * scenarios
- *
- */
+import gov.nasa.jpl.mbee.doorsng.model.Requirement;
+import gov.nasa.jpl.mbee.doorsng.model.RequirementCollection;
+import gov.nasa.jpl.mbee.doorsng.model.Folder;
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsOAuthClient;
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsRootServicesHelper;
+
 public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
-    private static Properties properties = new Properties();
 
-    static {
-
-        try {
-
-            properties.load(DoorsClient.class.getResourceAsStream("/doors.properties"));
-
-        } catch (Exception e) {
-
-        }
-    }
-
-    private static DoorsFormAuthClient client;
-    private static JazzRootServicesHelper helper;
+    private static DoorsOAuthClient client;
+    private static DoorsRootServicesHelper helper;
     private static String requirementFactory;
     private static String requirementCollectionFactory;
     private static String queryCapability;
-    //private static String folderQuery;
     private static String folderFactory;
     private static ResourceShape featureInstanceShape;
     private static ResourceShape collectionInstanceShape;
-    //private static URI folderAbout;
     private static Map<String, URI> projectProperties = null;
     private static Map<String, String> projectPropertiesDetails = null;
 
     public static String doorsUrl;
     public static String projectId;
     public static String rootFolder;
-    
-    public DoorsClient(String projectArea) throws Exception {
 
-        this(properties.getProperty("service_account"), properties.getProperty("service_password"), properties.getProperty("url"), projectArea);
-
-    }
-
-    public DoorsClient(String user, String password, String webContextUrl, String projectArea) throws Exception {
+    public DoorsClient(String consumerKey, String consumerSecret, String user, String password, String webContextUrl, String projectArea) throws Exception {
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
 
-        helper = new JazzRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
+        helper = new DoorsRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
         String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
-        client = new DoorsFormAuthClient(webContextUrl, authUrl, user, password);
+        client = helper.initOAuthClient(consumerKey, consumerSecret);
 
-        if (client.login() == HttpStatus.SC_OK) {
+        if (client != null) {
+            try {
+                client.getResource(webContextUrl,OSLCConstants.CT_RDF);
+            } catch (OAuthRedirectException oauthE) {
+                validateTokens(client, oauthE, consumerKey, consumerSecret, user, password, authUrl);
+                // Try to access again
+                ClientResponse response = client.getResource(webContextUrl, OSLCConstants.CT_RDF);
+                response.getEntity(InputStream.class).close();
+            }
             String catalogUrl = helper.getCatalogUrl();
             String serviceProviderUrl = client.lookupServiceProviderUrl(catalogUrl, projectArea);
-
             setResources(serviceProviderUrl);
-       }
-
+        }
     }
 
     private void setResources(String serviceProviderUrl) {
@@ -131,12 +110,10 @@ public class DoorsClient {
             requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE), "UTF-8");
             requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE), "UTF-8");
             rootFolder = doorsUrl + "/rm/folders/" + projectId;
-            //folderQuery = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders?oslc.where=public_rm:parent=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" +  projectId;
             folderFactory = doorsUrl + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + projectId;
 
             featureInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE, client, "Requirement");
             collectionInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, client, "Requirement Collection");
-            //folderAbout = URI.create(serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/");
 
         } catch (Exception e) {
             return;
@@ -385,33 +362,33 @@ public class DoorsClient {
     }
 
     /*
-    public String create(Folder folder) {
-        ClientResponse response;
+      public String create(Folder folder) {
+      ClientResponse response;
 
-        String parentFolder = rootFolder;
-        if (folder.getParent() != null) {
-            parentFolder = URLDecoder.decode(folder.getParent());
-        }
-        folder.setInstanceShape(folderAbout);
+      String parentFolder = rootFolder;
+      if (folder.getParent() != null) {
+      parentFolder = URLDecoder.decode(folder.getParent());
+      }
+      folder.setInstanceShape(folderAbout);
 
-        try {
+      try {
 
-            response = client.createResource(folderFactory, folder, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-            //processRawResponse(response);
-            response.consumeContent();
+      response = client.createResource(folderFactory, folder, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+      //processRawResponse(response);
+      response.consumeContent();
 
-            if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
-                return response.getHeaders().getFirst(HttpHeaders.LOCATION);
-            }
-        } catch (Exception e) {
+      if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
+      return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+      }
+      } catch (Exception e) {
 
-            logger.log(Level.SEVERE, e.getMessage(), e);
+      logger.log(Level.SEVERE, e.getMessage(), e);
 
-        }
+      }
 
-        return null;
+      return null;
 
-    }
+      }
     */
 
     public Boolean delete(String resourceUrl) {
@@ -527,6 +504,19 @@ public class DoorsClient {
 
     }
 
+    public static Map<String, String> getQueryMap(String query) {
+        Map<String, String> map = new HashMap<String, String>();
+        String[] params = query.split("&"); //$NON-NLS-1$
+
+        for (String param : params) {
+            String name = param.split("=")[0]; //$NON-NLS-1$
+            String value = param.split("=")[1]; //$NON-NLS-1$
+            map.put(name, value);
+        }
+
+        return map;
+    }
+
     private static Folder processFolderQuery(ClientResponse response) throws IOException {
 
         Folder result = new Folder();
@@ -554,4 +544,70 @@ public class DoorsClient {
         return result;
     }
 
+    private static void validateTokens(DoorsOAuthClient client, OAuthRedirectException oauthE, String consumerKey, String consumerSecret, String user, String password, String authURL) throws Exception {
+
+        String requestToken = oauthE.getAccessor().requestToken;
+        String tokenSecret = oauthE.getAccessor().tokenSecret;
+        String redirect = oauthE.getRedirectURL() + "?oauth_token=" + requestToken;
+        String signature = consumerSecret + "&" + tokenSecret;
+
+        HttpGet request2 = new HttpGet(redirect);
+        HttpClientParams.setRedirecting(request2.getParams(), false);
+        HttpResponse response = client.getHttpClient().execute(request2);
+        EntityUtils.consume(response.getEntity());
+
+        Header location = response.getFirstHeader("Location");
+
+        HttpGet request3 = new HttpGet(location.getValue());
+        HttpClientParams.setRedirecting(request3.getParams(), false);
+        response = client.getHttpClient().execute(request3);
+        EntityUtils.consume(response.getEntity());
+
+        HttpPost formPost = new HttpPost(authURL + "/j_security_check");
+        List<NameValuePair> nvps = new ArrayList<NameValuePair>();
+        nvps.add(new BasicNameValuePair("j_username", user));
+        nvps.add(new BasicNameValuePair("j_password", password));
+        formPost.setEntity(new UrlEncodedFormEntity(nvps, HTTP.UTF_8));
+        HttpResponse formResponse = client.getHttpClient().execute(formPost);
+        EntityUtils.consume(formResponse.getEntity());
+
+        location = formResponse.getFirstHeader("Location");
+
+        HttpGet request4 = new HttpGet(location.getValue());
+        HttpClientParams.setRedirecting(request4.getParams(), false);
+        response = client.getHttpClient().execute(request4);
+        EntityUtils.consume(response.getEntity());
+
+        location = response.getFirstHeader("Location");
+
+        HttpPost formPost2 = new HttpPost(authURL + "/j_security_check");
+        formPost2.getParams().setParameter("oauth_token", requestToken);
+        formPost2.getParams().setParameter("authorize", "true");
+        formPost2.addHeader("Content-Type","application/x-www-form-urlencoded;charset=UTF-8");
+        HttpResponse formResponse2 = client.getHttpClient().execute(formPost2);
+        EntityUtils.consume(formResponse2.getEntity());
+
+        HttpGet request5 = new HttpGet(location.getValue());
+        HttpClientParams.setRedirecting(request5.getParams(), false);
+        response = client.getHttpClient().execute(request5);
+        EntityUtils.consume(response.getEntity());
+
+        location = formResponse.getFirstHeader("Location");
+
+        Map<String,String> oAuthMap = getQueryMap(location.getValue());
+        String oauthToken = oAuthMap.get("oauth_token");
+        String oauthverifier = oAuthMap.get("oauth_verifier");
+
+        HttpPost formPost3 = new HttpPost(authURL + "/oauth-access-token?");
+        formPost3.getParams().setParameter("oauth_token", oauthToken);
+        formPost3.getParams().setParameter("oauth_consumer_key", consumerKey);
+        formPost3.getParams().setParameter("oauth_signature_method", "PLAINTEXT");
+        formPost3.getParams().setParameter("oauth_nonce", "");
+        formPost3.getParams().setParameter("oauth_timestamp", "");
+        formPost3.getParams().setParameter("oauth_signature", signature);
+        formPost3.getParams().setParameter("oauth_verifier", oauthverifier);
+        formPost3.addHeader("Content-Type","application/x-www-form-urlencoded;charset=UTF-8");
+        HttpResponse formResponse3 = client.getHttpClient().execute(formPost3);
+        EntityUtils.consume(formResponse3.getEntity());
+    }
 }

@@ -1,4 +1,4 @@
-package gov.nasa.jpl.mbee.doorsng;
+package gov.nasa.jpl.mbee.doorsng.lib;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
