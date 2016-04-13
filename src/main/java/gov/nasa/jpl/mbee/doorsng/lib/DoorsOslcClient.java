@@ -20,7 +20,7 @@ import org.eclipse.lyo.client.oslc.OSLCConstants;
 public class DoorsOslcClient extends org.eclipse.lyo.client.oslc.OslcClient
 {
 
-	private static Logger logger = Logger.getLogger(DoorsFormAuthClient.class);
+	private static Logger logger = Logger.getLogger(DoorsOslcClient.class);
 
 	public DoorsOslcClient()
 	{
