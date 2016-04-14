@@ -64,16 +64,15 @@ public class DoorsClient {
     private static String requirementCollectionFactory;
     private static String queryCapability;
     private static String folderFactory;
-    private static ResourceShape featureInstanceShape;
-    private static ResourceShape collectionInstanceShape;
     private static Map<String, URI> projectProperties = null;
     private static Map<String, String> projectPropertiesDetails = null;
 
     public static String doorsUrl;
+    public static String project;
     public static String projectId;
     public static String rootFolder;
 
-    public DoorsClient(String consumerKey, String consumerSecret, String user, String password, String webContextUrl, String projectArea) throws Exception {
+    public DoorsClient(String consumerKey, String consumerSecret, String user, String password, String webContextUrl) throws Exception {
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
@@ -91,33 +90,12 @@ public class DoorsClient {
                 ClientResponse response = client.getResource(webContextUrl, OSLCConstants.CT_RDF);
                 response.getEntity(InputStream.class).close();
             }
-            String catalogUrl = helper.getCatalogUrl();
-            String serviceProviderUrl = client.lookupServiceProviderUrl(catalogUrl, projectArea);
-            setResources(serviceProviderUrl);
         }
     }
 
-    private void setResources(String serviceProviderUrl) {
-        try {
-
-            URI serviceProvider = URI.create(serviceProviderUrl);
-            String[] serviceProviderPath = serviceProvider.getPath().split("/");
-
-            doorsUrl = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority();
-
-            projectId = serviceProviderPath[serviceProviderPath.length - 2];
-            queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
-            requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE), "UTF-8");
-            requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE), "UTF-8");
-            rootFolder = doorsUrl + "/rm/folders/" + projectId;
-            folderFactory = doorsUrl + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + projectId;
-
-            featureInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE, client, "Requirement");
-            collectionInstanceShape = RmUtil.lookupRequirementsInstanceShapes(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, client, "Requirement Collection");
-
-        } catch (Exception e) {
-            return;
-        }
+    public void setProject(String projectArea) throws Exception {
+        project = projectArea;
+        setResources(client.lookupServiceProviderUrl(helper.getCatalogUrl(), project));
     }
 
     public String getProject() {
@@ -173,11 +151,24 @@ public class DoorsClient {
 
     public String create(Requirement requirement) {
 
-        ClientResponse response;
+        return create(requirement, null);
 
-        requirement.setInstanceShape(featureInstanceShape.getAbout());
+    }
+
+    public String create(Requirement requirement, String shapeTitle) {
+
+        ClientResponse response;
+        ResourceShape shape;
 
         try {
+
+            if (shapeTitle == null) {
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "Requirement");
+            } else {
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, shapeTitle);
+            }
+
+            requirement.setInstanceShape(shape.getAbout());
 
             response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
             response.consumeContent();
@@ -200,12 +191,27 @@ public class DoorsClient {
 
     public String update(Requirement requirement) {
 
-        ClientResponse response;
+        return update(requirement, null);
 
-        requirement.setInstanceShape(featureInstanceShape.getAbout());
-        Requirement check = getRequirement(requirement.getResourceUrl());
+    }
+
+    public String update(Requirement requirement, String shapeTitle) {
+
+        ClientResponse response;
+        ResourceShape shape;
 
         try {
+
+            if (shapeTitle == null) {
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "Requirement");
+            } else {
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, shapeTitle);
+            }
+
+            requirement.setInstanceShape(shape.getAbout());
+
+            Requirement check = getRequirement(requirement.getResourceUrl());
+
             response = client.updateResource(requirement.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
             response.consumeContent();
 
@@ -252,11 +258,24 @@ public class DoorsClient {
 
     public String create(RequirementCollection collection) {
 
-        ClientResponse response;
+        return create(collection, null);
 
-        collection.setInstanceShape(collectionInstanceShape.getAbout());
+    }
+
+    public String create(RequirementCollection collection, String shapeTitle) {
+
+        ClientResponse response;
+        ResourceShape shape;
 
         try {
+
+            if (shapeTitle == null) {
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, "Requirement Collection");
+            } else {
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, shapeTitle);
+            }
+
+            collection.setInstanceShape(shape.getAbout());
 
             response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
             response.consumeContent();
@@ -279,13 +298,26 @@ public class DoorsClient {
 
     public String update(RequirementCollection collection) {
 
+        return update(collection, null);
+
+    }
+
+    public String update(RequirementCollection collection, String shapeTitle) {
+
         ClientResponse response;
-
-        collection.setInstanceShape(collectionInstanceShape.getAbout());
-
-        RequirementCollection check = getRequirementCollection(collection.getResourceUrl());
+        ResourceShape shape;
 
         try {
+
+            if (shapeTitle == null) {
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, "Requirement Collection");
+            } else {
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE, shapeTitle);
+            }
+
+            collection.setInstanceShape(shape.getAbout());
+
+            RequirementCollection check = getRequirementCollection(collection.getResourceUrl());
 
             response = client.updateResource(collection.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
             response.consumeContent();
@@ -332,7 +364,9 @@ public class DoorsClient {
             try {
                 parentFolder = URLDecoder.decode(folder.getParent(), "UTF-8");
             } catch (Exception e) {
-                e.printStackTrace();
+
+                logger.log(Level.SEVERE, e.getMessage(), e);
+
             }
         }
 
@@ -360,36 +394,6 @@ public class DoorsClient {
         return null;
 
     }
-
-    /*
-      public String create(Folder folder) {
-      ClientResponse response;
-
-      String parentFolder = rootFolder;
-      if (folder.getParent() != null) {
-      parentFolder = URLDecoder.decode(folder.getParent());
-      }
-      folder.setInstanceShape(folderAbout);
-
-      try {
-
-      response = client.createResource(folderFactory, folder, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
-      //processRawResponse(response);
-      response.consumeContent();
-
-      if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
-      return response.getHeaders().getFirst(HttpHeaders.LOCATION);
-      }
-      } catch (Exception e) {
-
-      logger.log(Level.SEVERE, e.getMessage(), e);
-
-      }
-
-      return null;
-
-      }
-    */
 
     public Boolean delete(String resourceUrl) {
         ClientResponse response;
@@ -422,14 +426,39 @@ public class DoorsClient {
     }
 
     public Map<String, URI> getFields() {
-        Property[] properties = featureInstanceShape.getProperties();
+        Property[] properties;
+        try {
 
-        for (Property property : properties) {
-            projectProperties.put(property.getTitle(), property.getPropertyDefinition());
-            projectPropertiesDetails.put(property.getTitle(), property.getName());
+            properties = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "Requirement").getProperties();
+            for (Property property : properties) {
+                projectProperties.put(property.getTitle(), property.getPropertyDefinition());
+                projectPropertiesDetails.put(property.getTitle(), property.getName());
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+        return projectProperties;
+    }
+
+
+    public static Map<String, String> getQueryMap(String query) {
+        Map<String, String> map = new HashMap<String, String>();
+        String[] params = query.split("&");
+
+        for (String param : params) {
+            String name = param.split("=")[0];
+            String value = param.split("=")[1];
+            map.put(name, value);
         }
 
-        return projectProperties;
+        return map;
+    }
+
+    public ResourceShape getShape(String oslcResourceType, String requiredInstanceShape) throws Exception {
+        return RmUtil.lookupRequirementsInstanceShapes(client.lookupServiceProviderUrl(helper.getCatalogUrl(), project), OSLCConstants.OSLC_RM_V2, oslcResourceType, client, requiredInstanceShape);
     }
 
     private OslcQueryResult getQuery(Map<String, String> params) {
@@ -485,7 +514,6 @@ public class DoorsClient {
 
                 } catch (Exception e) {
 
-                    e.printStackTrace();
                     logger.log(Level.SEVERE, e.getMessage(), e);
 
                 }
@@ -502,19 +530,6 @@ public class DoorsClient {
 
         return req.toArray(new Requirement[req.size()]);
 
-    }
-
-    public static Map<String, String> getQueryMap(String query) {
-        Map<String, String> map = new HashMap<String, String>();
-        String[] params = query.split("&"); //$NON-NLS-1$
-
-        for (String param : params) {
-            String name = param.split("=")[0]; //$NON-NLS-1$
-            String value = param.split("=")[1]; //$NON-NLS-1$
-            map.put(name, value);
-        }
-
-        return map;
     }
 
     private static Folder processFolderQuery(ClientResponse response) throws IOException {
@@ -542,6 +557,28 @@ public class DoorsClient {
         }
 
         return result;
+    }
+
+    private void setResources(String serviceProviderUrl) {
+        try {
+
+            URI serviceProvider = URI.create(serviceProviderUrl);
+            String[] serviceProviderPath = serviceProvider.getPath().split("/");
+
+            doorsUrl = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority();
+
+            projectId = serviceProviderPath[serviceProviderPath.length - 2];
+            queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
+            requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE), "UTF-8");
+            requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE), "UTF-8");
+            rootFolder = doorsUrl + "/rm/folders/" + projectId;
+            folderFactory = doorsUrl + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + projectId;
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
     }
 
     private static void validateTokens(DoorsOAuthClient client, OAuthRedirectException oauthE, String consumerKey, String consumerSecret, String user, String password, String authURL) throws Exception {

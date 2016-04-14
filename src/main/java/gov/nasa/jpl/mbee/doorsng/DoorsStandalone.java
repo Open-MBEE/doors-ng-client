@@ -59,7 +59,8 @@ public class DoorsStandalone {
 
         try {
 
-            DoorsClient doors = new DoorsClient(consumer, secret, user, pass, url, project);
+            DoorsClient doors = new DoorsClient(consumer, secret, user, pass, url);
+            doors.setProject(project);
 
             if ("read".equals(action)) {
                 if (requirement != null) {
@@ -71,7 +72,6 @@ public class DoorsStandalone {
 
             if ("create".equals(action)) {
                 JSONObject json = new JSONObject(requirement);
-                System.out.println(json);
                 Requirement req = new Requirement();
                 if (json.has("title")) {
                     req.setTitle(json.getString("title"));
@@ -86,13 +86,15 @@ public class DoorsStandalone {
                     Folder folder = new Folder();
                     folder.setTitle(json.getString("parent"));
                     String folderResource = doors.create(folder);
-                    System.out.println(folderResource);
                     if (folderResource != null) {
                         req.setParent(URI.create(folderResource));
                     }
                 }
-
-                response.put("result", doors.create(req));
+                if (json.has("type")) {
+                    response.put("result", doors.create(req, json.getString("type")));
+                } else {
+                    response.put("result", doors.create(req));
+                }
             }
             // TODO: Finish update functions
             if ("update".equals(action)) {
