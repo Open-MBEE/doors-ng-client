@@ -71,29 +71,31 @@ public class DoorsStandalone {
             }
 
             if ("create".equals(action)) {
-                JSONObject json = new JSONObject(requirement);
-                Requirement req = new Requirement();
-                if (json.has("title")) {
-                    req.setTitle(json.getString("title"));
-                }
-                if (json.has("description")) {
-                    req.setDescription(json.getString("description"));
-                }
-                if (json.has("primaryText")) {
-                    req.setPrimaryText(json.getString("primaryText"));
-                }
-                if (json.has("parent")) {
-                    Folder folder = new Folder();
-                    folder.setTitle(json.getString("parent"));
-                    String folderResource = doors.create(folder);
-                    if (folderResource != null) {
-                        req.setParent(URI.create(folderResource));
+                if (requirement != null) {
+                    JSONObject json = new JSONObject(requirement);
+                    Requirement req = new Requirement();
+                    if (json.has("title")) {
+                        req.setTitle(json.getString("title"));
                     }
-                }
-                if (json.has("type")) {
-                    response.put("result", doors.create(req, json.getString("type")));
-                } else {
-                    response.put("result", doors.create(req));
+                    if (json.has("description")) {
+                        req.setDescription(json.getString("description"));
+                    }
+                    if (json.has("primaryText")) {
+                        req.setPrimaryText(json.getString("primaryText"));
+                    }
+                    if (json.has("parent")) {
+                        Folder folder = new Folder();
+                        folder.setTitle(json.getString("parent"));
+                        String folderResource = doors.create(folder);
+                        if (folderResource != null) {
+                            req.setParent(URI.create(folderResource));
+                        }
+                    }
+                    if (json.has("type")) {
+                        response.put("result", doors.create(req, json.getString("type")));
+                    } else {
+                        response.put("result", doors.create(req));
+                    }
                 }
             }
             // TODO: Finish update functions
@@ -152,7 +154,7 @@ public class DoorsStandalone {
             cmd.getOptionValue("url") != null &&
             cmd.getOptionValue("project") != null
             ) {
-            if ("create".equals(action) && (cmd.hasOption("requirement"))) {
+            if ("create".equals(action)) {
                 return true;
             } else if ("read".equals(action)) {
                 return true;

@@ -20,32 +20,32 @@ import org.eclipse.lyo.client.oslc.OSLCConstants;
 public class DoorsOslcClient extends org.eclipse.lyo.client.oslc.OslcClient
 {
 
-	private static Logger logger = Logger.getLogger(DoorsOslcClient.class);
+    private static Logger logger = Logger.getLogger(DoorsOslcClient.class);
 
-	public DoorsOslcClient()
-	{
-		super();
-	}
+    public DoorsOslcClient()
+    {
+        super();
+    }
 
     /**
-	 * Create (POST) an artifact to a URL - usually an OSLC Creation Factory
-	 * @param url
-	 * @param artifact
-	 * @param mediaType
-	 * @param acceptType
+     * Create (POST) an artifact to a URL - usually an OSLC Creation Factory
+     * @param url
+     * @param artifact
+     * @param mediaType
+     * @param acceptType
      * @param customHeaders
-	 * @return
-	 * @throws URISyntaxException
-	 * @throws OAuthException
-	 * @throws IOException
-	 */
-	public ClientResponse createResource(String url, final Object artifact, String mediaType, String acceptType, Map<String, String> customHeaders) throws IOException, OAuthException, URISyntaxException {
+     * @return
+     * @throws URISyntaxException
+     * @throws OAuthException
+     * @throws IOException
+     */
+    public ClientResponse createResource(String url, final Object artifact, String mediaType, String acceptType, Map<String, String> customHeaders) throws IOException, OAuthException, URISyntaxException {
 
-		ClientResponse response = null;
-		RestClient restClient = new RestClient(this.getClientConfig());
-		boolean redirect = false;
+        ClientResponse response = null;
+        RestClient restClient = new RestClient(this.getClientConfig());
+        boolean redirect = false;
 
-		do {
+        do {
             Resource client = restClient.resource(url).contentType(mediaType).accept(acceptType).header(OSLCConstants.OSLC_CORE_VERSION,"2.0");
 
             for (String key : customHeaders.keySet()) {
@@ -53,17 +53,17 @@ public class DoorsOslcClient extends org.eclipse.lyo.client.oslc.OslcClient
                 client.header(key, value);
             }
 
-			response = client.post(artifact);
+            response = client.post(artifact);
 
-			if (response.getStatusType().getFamily() == Status.Family.REDIRECTION) {
-				url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
-				response.consumeContent();
-				redirect = true;
-			} else {
-				redirect = false;
-			}
-		} while (redirect);
+            if (response.getStatusType().getFamily() == Status.Family.REDIRECTION) {
+                url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
+                response.consumeContent();
+                redirect = true;
+            } else {
+                redirect = false;
+            }
+        } while (redirect);
 
-		return response;
-	}
+        return response;
+    }
 }

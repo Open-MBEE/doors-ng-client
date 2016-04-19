@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URL;
+import java.net.HttpCookie;
 import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,6 +38,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 import org.apache.wink.client.ClientResponse;
+import org.eclipse.lyo.client.exception.ResourceNotFoundException;
 import org.eclipse.lyo.client.oslc.OAuthRedirectException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
 import org.eclipse.lyo.client.oslc.resources.OslcQuery;
@@ -64,6 +66,9 @@ public class DoorsClient {
     private static String requirementCollectionFactory;
     private static String queryCapability;
     private static String folderFactory;
+
+    private static String JSESSIONID;
+
     private static Map<String, URI> projectProperties = null;
     private static Map<String, String> projectPropertiesDetails = null;
 
@@ -76,26 +81,49 @@ public class DoorsClient {
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
-
+        doorsUrl = webContextUrl;
         helper = new DoorsRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
         String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
         client = helper.initOAuthClient(consumerKey, consumerSecret);
 
         if (client != null) {
             try {
+
                 client.getResource(webContextUrl,OSLCConstants.CT_RDF);
+
             } catch (OAuthRedirectException oauthE) {
+
                 validateTokens(client, oauthE, consumerKey, consumerSecret, user, password, authUrl);
-                // Try to access again
                 ClientResponse response = client.getResource(webContextUrl, OSLCConstants.CT_RDF);
                 response.getEntity(InputStream.class).close();
+
             }
         }
     }
 
-    public void setProject(String projectArea) throws Exception {
+    public void setProject(String projectArea) {
         project = projectArea;
-        setResources(client.lookupServiceProviderUrl(helper.getCatalogUrl(), project));
+        try {
+
+            setResources(client.lookupServiceProviderUrl(helper.getCatalogUrl(), project));
+
+        } catch (ResourceNotFoundException e) {
+
+            try {
+
+                createProject(projectArea);
+
+            } catch (Exception f) {
+
+                logger.log(Level.SEVERE, "Couldn't create project", f);
+
+            }
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+        }
     }
 
     public String getProject() {
@@ -107,6 +135,7 @@ public class DoorsClient {
         ClientResponse response = null;
 
         try {
+
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
 
             if(response.getStatusCode() == HttpStatus.SC_OK) {
@@ -362,7 +391,9 @@ public class DoorsClient {
         String parentFolder = rootFolder;
         if (folder.getParent() != null) {
             try {
+
                 parentFolder = URLDecoder.decode(folder.getParent(), "UTF-8");
+
             } catch (Exception e) {
 
                 logger.log(Level.SEVERE, e.getMessage(), e);
@@ -393,6 +424,38 @@ public class DoorsClient {
 
         return null;
 
+    }
+
+    public String createProject(String project) throws Exception {
+        return createProject(project, "RRSTemplateID");
+    }
+
+    public String createProject(String project, String template) throws Exception {
+        ClientResponse response;
+        String projectFactory = doorsUrl + "projects";
+
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><jp:project-area xmlns:jp=\"http://jazz.net/xmlns/prod/jazz/process/0.6/\" xmlns:rm=\"http://www.ibm.com/xmlns/rdm/rdf/\" jp:name=\"" + project + "\" jp:templateId=\"" + template + "\" jp:templateLocale=\"en_US\"><jp:summary></jp:summary><jp:description>NewAutoProjectTest</jp:description><rm:spaceName>AUTOGENRATED</rm:spaceName><rm:spaceDescription>testing auto-creation</rm:spaceDescription><rm:componentName>xxx</rm:componentName><rm:componentDescription>NewAutoProject</rm:componentDescription><rm:spaceUri></rm:spaceUri><rm:defaultConfigurationUri></rm:defaultConfigurationUri><jp:visibility jp:access=\"PROJECT_HIERARCHY\"/></jp:project-area>";
+
+        try {
+
+            Map<String, String> headers = new HashMap<String, String>();
+            headers.put("X-Jazz-CSRF-Prevent", JSESSIONID);
+            response = client.createResource(projectFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, headers);
+            response.consumeContent();
+
+            if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
+                return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+            } else {
+                System.out.println("Response: " + response.getMessage());
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return null;
     }
 
     public Boolean delete(String resourceUrl) {
@@ -586,7 +649,6 @@ public class DoorsClient {
         String requestToken = oauthE.getAccessor().requestToken;
         String tokenSecret = oauthE.getAccessor().tokenSecret;
         String redirect = oauthE.getRedirectURL() + "?oauth_token=" + requestToken;
-        String signature = consumerSecret + "&" + tokenSecret;
 
         HttpGet request2 = new HttpGet(redirect);
         HttpClientParams.setRedirecting(request2.getParams(), false);
@@ -594,6 +656,7 @@ public class DoorsClient {
         EntityUtils.consume(response.getEntity());
 
         Header location = response.getFirstHeader("Location");
+        JSESSIONID = response.getFirstHeader("Set-Cookie").getValue().split("=")[1].split(";")[0];
 
         HttpGet request3 = new HttpGet(location.getValue());
         HttpClientParams.setRedirecting(request3.getParams(), false);
@@ -628,23 +691,5 @@ public class DoorsClient {
         HttpClientParams.setRedirecting(request5.getParams(), false);
         response = client.getHttpClient().execute(request5);
         EntityUtils.consume(response.getEntity());
-
-        location = formResponse.getFirstHeader("Location");
-
-        Map<String,String> oAuthMap = getQueryMap(location.getValue());
-        String oauthToken = oAuthMap.get("oauth_token");
-        String oauthverifier = oAuthMap.get("oauth_verifier");
-
-        HttpPost formPost3 = new HttpPost(authURL + "/oauth-access-token?");
-        formPost3.getParams().setParameter("oauth_token", oauthToken);
-        formPost3.getParams().setParameter("oauth_consumer_key", consumerKey);
-        formPost3.getParams().setParameter("oauth_signature_method", "PLAINTEXT");
-        formPost3.getParams().setParameter("oauth_nonce", "");
-        formPost3.getParams().setParameter("oauth_timestamp", "");
-        formPost3.getParams().setParameter("oauth_signature", signature);
-        formPost3.getParams().setParameter("oauth_verifier", oauthverifier);
-        formPost3.addHeader("Content-Type","application/x-www-form-urlencoded;charset=UTF-8");
-        HttpResponse formResponse3 = client.getHttpClient().execute(formPost3);
-        EntityUtils.consume(formResponse3.getEntity());
     }
 }

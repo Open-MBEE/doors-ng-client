@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>gov.nasa.jpl.mbee.doorsng</groupId>
   <artifactId>doorsng</artifactId>
-  <version>0.4.0</version>
+  <version>0.4.2</version>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
