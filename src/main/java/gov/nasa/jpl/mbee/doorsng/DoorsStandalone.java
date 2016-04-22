@@ -59,7 +59,7 @@ public class DoorsStandalone {
 
         try {
 
-            DoorsClient doors = new DoorsClient(consumer, secret, user, pass, url);
+            DoorsClient doors = new DoorsClient(user, pass, url, project);
             doors.setProject(project);
 
             if ("read".equals(action)) {
@@ -147,8 +147,6 @@ public class DoorsStandalone {
 
         if (
             action != null &&
-            cmd.getOptionValue("consumer") != null &&
-            cmd.getOptionValue("secret") != null &&
             cmd.getOptionValue("user") != null &&
             cmd.getOptionValue("pass") != null &&
             cmd.getOptionValue("url") != null &&

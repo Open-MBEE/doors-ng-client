@@ -14,9 +14,7 @@ public class DoorsStatic {
     private static final Logger logger = Logger.getLogger(DoorsStatic.class.getName());
 
     public static DoorsClient initClient(String consumerKey, String consumerSecret, String user, String password, String webContextUrl, String projectArea) throws Exception {
-        DoorsClient doors = new DoorsClient(consumerKey, consumerSecret, user, password, webContextUrl);
-        doors.setProject(projectArea);
-        return doors;
+        return new DoorsClient(user, password, webContextUrl, projectArea);
     }
 
     public static JSONObject createRequirement(DoorsClient doors, Requirement requirement) throws Exception {

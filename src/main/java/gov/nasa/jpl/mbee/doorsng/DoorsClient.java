@@ -54,13 +54,15 @@ import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 import gov.nasa.jpl.mbee.doorsng.model.RequirementCollection;
 import gov.nasa.jpl.mbee.doorsng.model.Folder;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsOAuthClient;
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsFormAuthClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsRootServicesHelper;
 
 public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
 
-    private static DoorsOAuthClient client;
+    private static DoorsFormAuthClient client;
+    private static DoorsOAuthClient oclient;
     private static DoorsRootServicesHelper helper;
     private static String requirementFactory;
     private static String requirementCollectionFactory;
@@ -77,28 +79,49 @@ public class DoorsClient {
     public static String projectId;
     public static String rootFolder;
 
+    public DoorsClient(String user, String password, String webContextUrl, String projectArea) throws Exception {
+
+        projectProperties = new HashMap<String, URI>();
+        projectPropertiesDetails = new HashMap<String, String>();
+
+        doorsUrl = webContextUrl;
+
+        helper = new DoorsRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
+        String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
+        client = helper.initFormClient(user, password, authUrl);
+
+        if (client.login() == HttpStatus.SC_OK) {
+            JSESSIONID = client.getSessionId();
+            if (projectArea != null) {
+                setProject(projectArea);
+            }
+       }
+
+    }
+
     public DoorsClient(String consumerKey, String consumerSecret, String user, String password, String webContextUrl) throws Exception {
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
         doorsUrl = webContextUrl;
-        helper = new DoorsRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
-        String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
-        client = helper.initOAuthClient(consumerKey, consumerSecret);
+        helper = new DoorsRootServicesHelper(doorsUrl, OSLCConstants.OSLC_RM_V2);
+        String authUrl = doorsUrl.replaceFirst("/rm", "/jts");
+        oclient = helper.initOAuthClient(consumerKey, consumerSecret);
 
         if (client != null) {
             try {
 
-                client.getResource(webContextUrl,OSLCConstants.CT_RDF);
+                oclient.getResource(doorsUrl,OSLCConstants.CT_RDF);
 
             } catch (OAuthRedirectException oauthE) {
 
-                validateTokens(client, oauthE, consumerKey, consumerSecret, user, password, authUrl);
-                ClientResponse response = client.getResource(webContextUrl, OSLCConstants.CT_RDF);
+                validateTokens(oclient, oauthE, consumerKey, consumerSecret, user, password, authUrl);
+                ClientResponse response = client.getResource(doorsUrl, OSLCConstants.CT_RDF);
                 response.getEntity(InputStream.class).close();
 
             }
         }
+
     }
 
     public void setProject(String projectArea) {
@@ -406,7 +429,7 @@ public class DoorsClient {
         try {
 
             Map<String, String> headers = new HashMap<String, String>();
-            headers.put("net.jazz.jfs.owning-context", doorsUrl + "/rm/process/project-areas/" + projectId);
+            headers.put("net.jazz.jfs.owning-context", doorsUrl + "/process/project-areas/" + projectId);
             response = client.createResource(folderFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, headers);
             response.consumeContent();
 
@@ -432,7 +455,7 @@ public class DoorsClient {
 
     public String createProject(String project, String template) throws Exception {
         ClientResponse response;
-        String projectFactory = doorsUrl + "projects";
+        String projectFactory = doorsUrl + "/projects";
 
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><jp:project-area xmlns:jp=\"http://jazz.net/xmlns/prod/jazz/process/0.6/\" xmlns:rm=\"http://www.ibm.com/xmlns/rdm/rdf/\" jp:name=\"" + project + "\" jp:templateId=\"" + template + "\" jp:templateLocale=\"en_US\"><jp:summary></jp:summary><jp:description>NewAutoProjectTest</jp:description><rm:spaceName>AUTOGENRATED</rm:spaceName><rm:spaceDescription>testing auto-creation</rm:spaceDescription><rm:componentName>xxx</rm:componentName><rm:componentDescription>NewAutoProject</rm:componentDescription><rm:spaceUri></rm:spaceUri><rm:defaultConfigurationUri></rm:defaultConfigurationUri><jp:visibility jp:access=\"PROJECT_HIERARCHY\"/></jp:project-area>";
 
@@ -541,7 +564,7 @@ public class DoorsClient {
             Iterator<Entry<String, String>> it = params.entrySet().iterator();
             if (it.hasNext()) {
                 Entry<String, String> pair = it.next();
-                prefix = "rm_property=<" + doorsUrl + "/rm/types/>";
+                prefix = "rm_property=<" + doorsUrl + "/types/>";
                 where = String.format("rm_property:%s=\"%s\"", projectPropertiesDetails.get((String) pair.getValue()), (String) pair.getKey());
             }
         }
@@ -628,14 +651,12 @@ public class DoorsClient {
             URI serviceProvider = URI.create(serviceProviderUrl);
             String[] serviceProviderPath = serviceProvider.getPath().split("/");
 
-            doorsUrl = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority();
-
             projectId = serviceProviderPath[serviceProviderPath.length - 2];
             queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
             requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE), "UTF-8");
             requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE), "UTF-8");
-            rootFolder = doorsUrl + "/rm/folders/" + projectId;
-            folderFactory = doorsUrl + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + projectId;
+            rootFolder = doorsUrl + "/folders/" + projectId;
+            folderFactory = doorsUrl + "/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + projectId;
 
         } catch (Exception e) {
 
