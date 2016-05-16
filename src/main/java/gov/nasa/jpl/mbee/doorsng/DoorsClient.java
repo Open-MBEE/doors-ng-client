@@ -713,4 +713,29 @@ public class DoorsClient {
         response = client.getHttpClient().execute(request5);
         EntityUtils.consume(response.getEntity());
     }
+    
+    
+    public InputStream getAllArtifactTypes(String project) throws Exception {
+
+        HttpGet httpget = new HttpGet(doorsUrl+"publish/resources?projectName=" + project);
+        InputStream artifactTypes = null;
+        httpget.setHeader("Accept", "application/xml");
+        httpget.setHeader("X-Jazz-CSRF-Prevent",JSESSIONID);
+                 
+       try {
+           
+           HttpResponse response = client.getHttpClient().execute(httpget);
+       
+           artifactTypes = response.getEntity().getContent();
+                      
+           
+       }  catch (IOException e) {
+           e.printStackTrace();
+       }
+       
+       return artifactTypes;
+       
+   }
+    
+    
 }
