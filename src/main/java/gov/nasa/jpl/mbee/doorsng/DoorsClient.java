@@ -714,7 +714,10 @@ public class DoorsClient {
         EntityUtils.consume(response.getEntity());
     }
     
-    
+    /***
+     * DoorsStereotypeProfileGenerator utility class will process the input stream
+     * of artifact types and attributes returned by this method
+     */
     public InputStream getAllArtifactTypes(String project) throws Exception {
 
         HttpGet httpget = new HttpGet(doorsUrl+"publish/resources?projectName=" + project);
