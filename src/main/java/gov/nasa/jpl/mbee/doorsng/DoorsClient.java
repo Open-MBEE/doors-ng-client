@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.URL;
 import java.net.HttpCookie;
@@ -406,6 +407,36 @@ public class DoorsClient {
         }
 
         return new Folder();
+    }
+
+    public Folder[] getFolders() {
+
+        Set<Folder> folders = new HashSet<Folder>();
+        String folderQueryCapability = doorsUrl + "folders";
+
+        OslcQueryParameters queryParams = new OslcQueryParameters();
+        queryParams.setWhere("public_rm:parent=" + doorsUrl + "folders/" + projectId);
+        OslcQuery query = new OslcQuery(client, folderQueryCapability, queryParams);
+        OslcQueryResult result = query.submit();
+
+        for (String resultsUrl : result.getMembersUrls()) {
+
+            ClientResponse response;
+
+            try {
+
+                response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
+                Folder folder = processFolderQuery(response);
+                folders.add(folder);
+
+            } catch (Exception e) {
+
+                logger.log(Level.SEVERE, e.getMessage(), e);
+
+            }
+        }
+
+        return folders.toArray(new Folder[folders.size()]);
     }
 
     public String create(Folder folder) {

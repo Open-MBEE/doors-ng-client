@@ -3,6 +3,7 @@ package gov.nasa.jpl.mbee.doorsng;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -98,6 +99,11 @@ public class DoorsStandalone {
                     }
                 }
             }
+
+            if ("folders".equals(action)) {
+                response.put("result", doors.getFolders());
+            }
+
             // TODO: Finish update functions
             if ("update".equals(action)) {
                 JSONObject json = null;
@@ -154,7 +160,7 @@ public class DoorsStandalone {
             ) {
             if ("create".equals(action)) {
                 return true;
-            } else if ("read".equals(action)) {
+            } else if ("read".equals(action) || "folders".equals(action)) {
                 return true;
             } else if ("update".equals(action) && (cmd.hasOption("requirement"))) {
                 return true;
