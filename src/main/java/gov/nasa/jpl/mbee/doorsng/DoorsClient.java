@@ -85,6 +85,10 @@ public class DoorsClient {
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
 
+        if (webContextUrl.charAt(webContextUrl.length() - 1) != '/') {
+            webContextUrl = webContextUrl + "/";
+        }
+
         doorsUrl = webContextUrl;
 
         helper = new DoorsRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
