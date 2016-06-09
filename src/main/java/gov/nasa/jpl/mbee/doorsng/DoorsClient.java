@@ -412,6 +412,11 @@ public class DoorsClient {
         return new Folder();
     }
 
+    public Folder[] getFolders() {
+
+        return getFolders(null);
+    }
+
     public Folder[] getFolders(String parentResourceUrl) {
 
         Set<Folder> folders = new HashSet<Folder>();
