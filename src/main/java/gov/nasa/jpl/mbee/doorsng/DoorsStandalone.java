@@ -36,6 +36,7 @@ public class DoorsStandalone {
         options.addOption("project", true, "project area");
         options.addOption("action", true, "action");
         options.addOption("requirement", true, "requirement");
+        options.addOption("resource", true, "resource");
 
         CommandLineParser cliParser = new GnuParser();
 
@@ -55,6 +56,7 @@ public class DoorsStandalone {
         String url = cmd.getOptionValue("url");
         String project = cmd.getOptionValue("project");
         String requirement = cmd.getOptionValue("requirement");
+        String resource = cmd.getOptionValue("resource");
 
         JSONObject response = new JSONObject();
 
@@ -101,7 +103,7 @@ public class DoorsStandalone {
             }
 
             if ("folders".equals(action)) {
-                response.put("result", doors.getFolders());
+                response.put("result", doors.getFolders(resource));
             }
 
             // TODO: Finish update functions

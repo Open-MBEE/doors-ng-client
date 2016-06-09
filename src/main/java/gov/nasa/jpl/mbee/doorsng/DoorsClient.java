@@ -412,13 +412,17 @@ public class DoorsClient {
         return new Folder();
     }
 
-    public Folder[] getFolders() {
+    public Folder[] getFolders(String parentResourceUrl) {
 
         Set<Folder> folders = new HashSet<Folder>();
         String folderQueryCapability = doorsUrl + "folders";
+        String resourceUrl = parentResourceUrl;
+        if (resourceUrl == null) {
+            resourceUrl = doorsUrl + "folders/" + projectId;
+        }
 
         OslcQueryParameters queryParams = new OslcQueryParameters();
-        queryParams.setWhere("public_rm:parent=" + doorsUrl + "folders/" + projectId);
+        queryParams.setWhere("public_rm:parent=" + resourceUrl);
         OslcQuery query = new OslcQuery(client, folderQueryCapability, queryParams);
         OslcQueryResult result = query.submit();
 
@@ -747,7 +751,7 @@ public class DoorsClient {
         response = client.getHttpClient().execute(request5);
         EntityUtils.consume(response.getEntity());
     }
-    
+
     /***
      * DoorsStereotypeProfileGenerator utility class will process the input stream
      * of artifact types and attributes returned by this method
@@ -758,21 +762,21 @@ public class DoorsClient {
         InputStream artifactTypes = null;
         httpget.setHeader("Accept", "application/xml");
         httpget.setHeader("X-Jazz-CSRF-Prevent",JSESSIONID);
-                 
+
        try {
-           
+
            HttpResponse response = client.getHttpClient().execute(httpget);
-       
+
            artifactTypes = response.getEntity().getContent();
-                      
-           
+
+
        }  catch (IOException e) {
            e.printStackTrace();
        }
-       
+
        return artifactTypes;
-       
+
    }
-    
-    
+
+
 }
