@@ -1,5 +1,6 @@
 package gov.nasa.jpl.mbee.doorsng;
 
+import java.io.Console;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -23,15 +24,17 @@ import gov.nasa.jpl.mbee.doorsng.model.Folder;
 public class DoorsStandalone {
 
     private static final Logger logger = Logger.getLogger(DoorsStandalone.class.getName());
+    private static String pass;
 
     public static void main(String[] args) throws ParseException {
+        Console console = System.console();
+        pass = new String(console.readPassword("Password: "));
 
         Options options = new Options();
 
         options.addOption("consumer", true, "consumer key");
         options.addOption("secret", true, "consumer secret");
         options.addOption("user", true, "username");
-        options.addOption("pass", true, "password");
         options.addOption("url", true, "doors url");
         options.addOption("project", true, "project area");
         options.addOption("action", true, "action");
@@ -52,7 +55,6 @@ public class DoorsStandalone {
         String consumer = cmd.getOptionValue("consumer");
         String secret = cmd.getOptionValue("secret");
         String user = cmd.getOptionValue("user");
-        String pass = cmd.getOptionValue("pass");
         String url = cmd.getOptionValue("url");
         String project = cmd.getOptionValue("project");
         String requirement = cmd.getOptionValue("requirement");
@@ -155,8 +157,8 @@ public class DoorsStandalone {
 
         if (
             action != null &&
+            pass != null &&
             cmd.getOptionValue("user") != null &&
-            cmd.getOptionValue("pass") != null &&
             cmd.getOptionValue("url") != null &&
             cmd.getOptionValue("project") != null
             ) {
@@ -174,4 +176,6 @@ public class DoorsStandalone {
         return false;
 
     }
+    
+    
 }
