@@ -1020,7 +1020,7 @@ public class DoorsClient {
             }
 
         }
-        // shouldn't hit this if checking artifact type before checkinf sysmlid
+        // shouldn't hit this if DoorsSync checks that artifact type exist prior to checking sysmlid
         catch ( ResourceNotFoundException e ) {
             e.printStackTrace();
         } catch ( Exception e ) {
