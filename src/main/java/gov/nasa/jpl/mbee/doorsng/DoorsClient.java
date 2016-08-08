@@ -233,8 +233,11 @@ public class DoorsClient {
         try {
 
             if ( shapeTitle == null ) {
+                //TODO uncomment
+                /* = getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
+                                  "Requirement" );*/
                 shape = getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
-                                  "Requirement" );
+                        "VandVX" );
             } else {
                 shape = getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
                                   shapeTitle );
@@ -957,6 +960,24 @@ public class DoorsClient {
 
         return false;
 
+    }
+    
+    public boolean doesArtifactTypeExist( String artifactType ) throws Exception {
+
+        try {
+            if ( artifactType != null ) {
+                
+                getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
+                                  artifactType );
+                return true;
+            } 
+            else {
+                return false;
+            }
+        }
+        catch(ResourceNotFoundException e) {
+            return false;
+        }
     }
 
 }
