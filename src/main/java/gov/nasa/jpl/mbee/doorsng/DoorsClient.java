@@ -631,7 +631,7 @@ public class DoorsClient {
         try {
 
             properties = getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
-                                   "Requirement" ).getProperties();
+                                   "RequirementX" ).getProperties();
             for ( Property property : properties ) {
                 projectProperties.put( property.getTitle(),
                                        property.getPropertyDefinition() );
@@ -906,9 +906,11 @@ public class DoorsClient {
 
     }
 
-    /*** 
+    /***
      * Author: Bruce Meeks Jr
-     * @param project name
+     * 
+     * @param project
+     *            name
      * @return true/false is project exists in DNG
      */
     public boolean doesProjectExists( String project ) {
@@ -933,21 +935,25 @@ public class DoorsClient {
 
             Node curProjectAreaNode = null;
             Attr curProjectNodeAttribute = null;
-          
+
             for ( int pn = 0; pn < projectNodes.getLength(); pn++ ) {
 
-                curProjectAreaNode  = projectNodes.item( pn );
-                
-                for ( int pna = 0; pna < curProjectAreaNode.getAttributes()
-                                                        .getLength(); pna++ ) {
-                    
-                    curProjectNodeAttribute = (Attr) curProjectAreaNode.getAttributes().item(pna);
+                curProjectAreaNode = projectNodes.item( pn );
 
-                    if(curProjectNodeAttribute.getValue().equals( project)) {
+                for ( int pna =
+                        0; pna < curProjectAreaNode.getAttributes()
+                                                   .getLength(); pna++ ) {
+
+                    curProjectNodeAttribute =
+                            (Attr)curProjectAreaNode.getAttributes()
+                                                    .item( pna );
+
+                    if ( curProjectNodeAttribute.getValue()
+                                                .equals( project ) ) {
                         return true;
 
                     }
-                    
+
                 }
             }
 
@@ -958,29 +964,71 @@ public class DoorsClient {
         return false;
 
     }
-    
+
     /***
      * Author: Bruce Meeks Jr
+     * 
      * @param artifactType
-     * @return true/false is artifact type user has specified, exist in DNG 
+     * @return true/false is artifact type user has specified, exist in DNG
      * @throws Exception
      */
-    public boolean doesArtifactTypeExist( String artifactType ) throws Exception {
+    public boolean
+           doesArtifactTypeExist( String artifactType ) throws Exception {
 
         try {
             if ( artifactType != null ) {
-                
-                getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
-                                  artifactType );
+
+                getShape( OSLCConstants.RM_REQUIREMENT_TYPE, artifactType );
                 return true;
-            } 
-            else {
+            } else {
                 return false;
             }
-        }
-        catch(ResourceNotFoundException e) {
+        } catch ( ResourceNotFoundException e ) {
             return false;
         }
+    }
+
+    /***
+     * Author: Bruce Meeks Jr
+     * 
+     * @param artifactType
+     * @param sysmlId
+     * @return true/false if sysmlid has been created for a specific artifact type
+     * @throws Exception
+     */
+    public boolean doesSysmlIdExist( String artifactType,
+                                     String sysmlId ) throws Exception {
+
+        Property[] properties;
+
+        try {
+
+            properties = getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
+                                   artifactType ).getProperties();
+            
+            for ( Property property : properties ) {
+                
+                projectProperties.put( property.getTitle(),
+                                       property.getPropertyDefinition() );
+                
+            }
+
+            if ( projectProperties.get( sysmlId ) != null ) {
+                return true;
+            } else {
+                return false;
+            }
+
+        }
+        // shouldn't hit this if checking artifact type before checkinf sysmlid
+        catch ( ResourceNotFoundException e ) {
+            e.printStackTrace();
+        } catch ( Exception e ) {
+            e.printStackTrace();
+        }
+
+        return false;
+
     }
 
 }
