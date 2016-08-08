@@ -2,7 +2,6 @@ package gov.nasa.jpl.mbee.doorsng;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URL;
@@ -233,11 +232,8 @@ public class DoorsClient {
         try {
 
             if ( shapeTitle == null ) {
-                //TODO uncomment
-                /* = getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
-                                  "Requirement" );*/
                 shape = getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
-                        "VandVX" );
+                                  "Requirement" );
             } else {
                 shape = getShape( OSLCConstants.RM_REQUIREMENT_TYPE,
                                   shapeTitle );
@@ -962,6 +958,12 @@ public class DoorsClient {
 
     }
     
+    /***
+     * Author: Bruce Meeks Jr
+     * @param artifactType
+     * @return true/false is artifact type user has specified, exist in DNG 
+     * @throws Exception
+     */
     public boolean doesArtifactTypeExist( String artifactType ) throws Exception {
 
         try {
