@@ -459,12 +459,6 @@ public class DoorsClient {
         return folders.toArray(new Folder[folders.size()]);
     }
 
-    // TODO remove
-
-    public void hello() {
-
-        System.out.println("JUST TESTING");
-    }
 
     public String create(Folder folder) {
         ClientResponse response;
