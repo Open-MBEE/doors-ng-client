@@ -85,6 +85,31 @@ public class DoorsClient {
     public static String project;
     public static String projectId;
     public static String rootFolder;
+    private String requirementArtifactType = "";
+
+
+    public DoorsClient(String user, String password, String webContextUrl, String projectArea, String artifactType)
+                    throws Exception {
+
+        requirementArtifactType = artifactType;
+
+        projectProperties = new HashMap<String, URI>();
+        projectPropertiesDetails = new HashMap<String, String>();
+
+        doorsUrl = webContextUrl;
+
+        helper = new DoorsRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
+        String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
+        client = helper.initFormClient(user, password, authUrl);
+
+        if (client.login() == HttpStatus.SC_OK) {
+            JSESSIONID = client.getSessionId();
+            if (projectArea != null) {
+                setProject(projectArea);
+            }
+        }
+
+    }
 
     public DoorsClient(String user, String password, String webContextUrl, String projectArea) throws Exception {
 
@@ -106,8 +131,8 @@ public class DoorsClient {
 
     }
 
-    public DoorsClient(String consumerKey, String consumerSecret, String user, String password, String webContextUrl)
-                    throws Exception {
+    public DoorsClient(String consumerKey, String consumerSecret, String user, String password, String webContextUrl,
+                    Boolean ignore) throws Exception {
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
@@ -223,7 +248,7 @@ public class DoorsClient {
         try {
 
             if (shapeTitle == null) {
-                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "Requirement");
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, requirementArtifactType);
             } else {
                 shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, shapeTitle);
             }
@@ -264,7 +289,7 @@ public class DoorsClient {
         try {
 
             if (shapeTitle == null) {
-                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "Requirement");
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, requirementArtifactType);
             } else {
                 shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, shapeTitle);
             }
@@ -574,7 +599,9 @@ public class DoorsClient {
         Property[] properties;
         try {
 
-            properties = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "RequirementX").getProperties();
+            properties = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, requirementArtifactType).getProperties();
+
+
             for (Property property : properties) {
                 projectProperties.put(property.getTitle(), property.getPropertyDefinition());
                 projectPropertiesDetails.put(property.getTitle(), property.getName());
@@ -782,8 +809,9 @@ public class DoorsClient {
     }
 
     /***
-     * DoorsStereotypeProfileGenerator utility class will process the input stream of artifact types
-     * and attributes returned by this method
+     * Author: Bruce Meeks Jr
+     * @param project name
+     * @return all artifacts and owned attributes for the specified project
      */
     public InputStream getAllArtifactTypes(String project) throws Exception {
 
@@ -808,7 +836,6 @@ public class DoorsClient {
 
     /***
      * Author: Bruce Meeks Jr
-     * 
      * @param project name
      * @return true/false is project exists in DNG
      */
@@ -888,7 +915,7 @@ public class DoorsClient {
      * @return true/false if sysmlid has been created for a specific artifact type
      * @throws Exception
      */
-    public boolean doesSysmlIdExist(String artifactType, String sysmlId) throws Exception {
+    public boolean doesSysmlIdExist(String artifactType, String sysmlid) throws Exception {
 
         Property[] properties;
 
@@ -902,14 +929,13 @@ public class DoorsClient {
 
             }
 
-            if (projectProperties.get(sysmlId) != null) {
+            if (projectProperties.get(sysmlid) != null) {
                 return true;
             } else {
                 return false;
             }
 
         }
-        // shouldn't hit this if DoorsSync checks that artifact type exist prior to checking sysmlid
         catch (ResourceNotFoundException e) {
             e.printStackTrace();
         } catch (Exception e) {
@@ -919,5 +945,46 @@ public class DoorsClient {
         return false;
 
     }
+
+
+    /***
+     * Author: Bruce Meeks Jr
+     * 
+     * @param artifactType
+     * @param attribute
+     * @return true/false if specified attribute has been created in DNG for the specified artifact type
+     * @throws Exception
+     */
+    public boolean doesAttributeExist(String artifactType, String attribute) throws Exception {
+
+        Property[] properties;
+
+        try {
+
+            properties = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, artifactType).getProperties();
+
+            for (Property property : properties) {
+
+                projectProperties.put(property.getTitle(), property.getPropertyDefinition());
+
+            }
+
+            if (projectProperties.get(attribute) != null) {
+                return true;
+            } else {
+                return false;
+            }
+
+        } catch (ResourceNotFoundException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+
+    }
+
+
 
 }
