@@ -63,7 +63,7 @@ public class CreateRequirement {
 
 			// add custom link to requirement resouce
 			Resource sourceRequirementResource = rdfModel.getResource("https://doors-ng-uat.jpl.nasa.gov:9443/rm/resources/_vag30WmkEeauX4BB8_MMMM");
-			Resource targetRequirementResource = rdfModel.getResource("https://doors-ng-uat.jpl.nasa.gov:9443/rm/resources/_vag30WmkEeauX4BB8_MMMM");
+			Resource targetRequirementResource = rdfModel.getResource("https://doors-ng-uat.jpl.nasa.gov:9443/rm/resources/_v50qAWmkEeauX4BB8_HMfQ");
 			Property customLinkProperty = rdfModel.createProperty("https://doors-ng-dev.jpl.nasa.gov:9443/rm/web/mylink");
 			sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
 			

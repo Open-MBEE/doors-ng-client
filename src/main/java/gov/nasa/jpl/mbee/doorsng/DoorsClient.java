@@ -212,6 +212,32 @@ public class DoorsClient {
 
     }
 
+    public String getRequirementAsRDF(String resourceUrl) {
+
+        ClientResponse response = null;
+
+        try {
+
+            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
+
+            if (response.getStatusCode() == HttpStatus.SC_OK) {
+                String requirement = response.getEntity(String.class);
+//                requirement.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+
+                return requirement;
+
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return null;
+
+    }
+    
     public Requirement[] getRequirements() {
 
         OslcQuery query = new OslcQuery(client, queryCapability);
@@ -237,6 +263,32 @@ public class DoorsClient {
     public String create(Requirement requirement) {
 
         return create(requirement, null);
+
+    }
+    
+    public String createRequirementFromRDF(String requirement) {
+
+    	ClientResponse response;
+        
+        try {
+
+            response = client.createResource2(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML);
+            response.consumeContent();
+
+            if (response.getStatusCode() == HttpStatus.SC_CREATED) {
+
+                return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return null;
 
     }
 
@@ -317,6 +369,34 @@ public class DoorsClient {
 
     }
 
+    public int updateRequirementFromRDF(String entityBody, String  requirementURL) {
+
+        ClientResponse response;       
+
+        try {
+
+            Requirement check = getRequirement(requirementURL);
+
+//            response = client.updateResource(requirement.getResourceUrl(), requirement,
+//                            OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            response = client.updateResource2(requirementURL, entityBody,
+                    OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            
+            response.consumeContent();
+
+            return response.getStatusCode();
+            
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return 0;
+
+    }
+    
     public RequirementCollection getRequirementCollection(String resourceUrl) {
 
         ClientResponse response = null;
