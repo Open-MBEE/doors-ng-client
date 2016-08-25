@@ -1,4 +1,4 @@
-package gov.nasa.jpl.mbee.doorsng;
+package gov.nasa.jpl.mbee.doorsng.clients;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -35,6 +35,7 @@ import com.hp.hpl.jena.rdf.model.Statement;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.hp.hpl.jena.util.FileManager;
 
+import gov.nasa.jpl.mbee.doorsng.DoorsClient;
 import gov.nasa.jpl.mbee.doorsng.model.Folder;
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 
@@ -57,11 +58,17 @@ public class CreateRequirement {
 				throw new IllegalArgumentException("File: " + inputFileName + " not found");
 			}
 
-			// read the RDF/XML file
+			// read the RDF/XML file as RDF model
 			rdfModel.read(in, null);
 
-			// rdfModel.read("axel-requirement.rdf", "RDF/XML") ;
+			// add custom link to requirement resouce
+			Resource sourceRequirementResource = rdfModel.getResource("https://doors-ng-uat.jpl.nasa.gov:9443/rm/resources/_vag30WmkEeauX4BB8_MMMM");
+			Resource targetRequirementResource = rdfModel.getResource("https://doors-ng-uat.jpl.nasa.gov:9443/rm/resources/_vag30WmkEeauX4BB8_MMMM");
+			Property customLinkProperty = rdfModel.createProperty("https://doors-ng-dev.jpl.nasa.gov:9443/rm/web/mylink");
+			sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
+			
 
+			// print for verification RDF in console
 			OutputStream outputStream = new ByteArrayOutputStream();
 			rdfModel.write(outputStream);
 			String content = outputStream.toString();
@@ -71,43 +78,47 @@ public class CreateRequirement {
 			// for test
 			// doors.create(requirement);
 
+			doors.createRequirementFromRDF(content);
+
+//			// create httpclient
+//			DefaultHttpClient httpClient = new DefaultHttpClient(new ThreadSafeClientConnManager());
+//			httpClient.setRedirectStrategy(new RedirectStrategy() {
+//				@Override
+//				public HttpUriRequest getRedirect(HttpRequest request, HttpResponse response, HttpContext context) {
+//					return null;
+//				}
+//
+//				@Override
+//				public boolean isRedirected(HttpRequest request, HttpResponse response, HttpContext context) {
+//					return false;
+//				}
+//			});
+//
+//			// create clientConfig
+//			ClientConfig clientConfig = new ApacheHttpClientConfig(httpClient);
+//			javax.ws.rs.core.Application app = new javax.ws.rs.core.Application() {
+//				@Override
+//				public Set<Class<?>> getClasses() {
+//					Set<Class<?>> classes = new HashSet<Class<?>>();
+//					classes.addAll(JenaProvidersRegistry.getProviders());
+//					classes.addAll(Json4JProvidersRegistry.getProviders());
+//					return classes;
+//				}
+//			};
+//			clientConfig = clientConfig.applications(app);
+//
+//			RestClient restClient = new RestClient(clientConfig);
+//
+//			String requirementFactory = "https://doors-ng-uat.jpl.nasa.gov:9443/rm/requirementFactory?projectURL=https://doors-ng-uat.jpl.nasa.gov:9443/rm/process/project-areas/_xYndoOZaEeWvYbfYe0sscg";
+//
+//			 String response =
+//			 restClient.resource(requirementFactory).contentType("application/rdf+xml").accept("application/rdf+xml").header(OSLCConstants.OSLC_CORE_VERSION,"2.0").post(String.class,
+//					 content);
+//			 System.out.println("Test");
 			
-
-			// create httpclient
-			DefaultHttpClient httpClient = new DefaultHttpClient(new ThreadSafeClientConnManager());
-			httpClient.setRedirectStrategy(new RedirectStrategy() {
-				@Override
-				public HttpUriRequest getRedirect(HttpRequest request, HttpResponse response, HttpContext context) {
-					return null;
-				}
-
-				@Override
-				public boolean isRedirected(HttpRequest request, HttpResponse response, HttpContext context) {
-					return false;
-				}
-			});
-
-			// create clientConfig
-			ClientConfig clientConfig = new ApacheHttpClientConfig(httpClient);
-			javax.ws.rs.core.Application app = new javax.ws.rs.core.Application() {
-				@Override
-				public Set<Class<?>> getClasses() {
-					Set<Class<?>> classes = new HashSet<Class<?>>();
-					classes.addAll(JenaProvidersRegistry.getProviders());
-					classes.addAll(Json4JProvidersRegistry.getProviders());
-					return classes;
-				}
-			};
-			clientConfig = clientConfig.applications(app);
-
-			RestClient restClient = new RestClient(clientConfig);
-
-			String requirementFactory = "https://doors-ng-uat.jpl.nasa.gov:9443/rm/requirementFactory?projectURL=https://doors-ng-uat.jpl.nasa.gov:9443/rm/process/project-areas/_xYndoOZaEeWvYbfYe0sscg";
-
-			 String response =
-			 restClient.resource(requirementFactory).contentType("application/rdf+xml").accept("application/rdf+xml").header(OSLCConstants.OSLC_CORE_VERSION,"2.0").post(String.class,
-					 content);
-			 System.out.println("Test");
+			
+			
+			
 			// response.consumeContent();
 			// if (response.getStatusCode() == HttpStatus.SC_CREATED) {
 			//

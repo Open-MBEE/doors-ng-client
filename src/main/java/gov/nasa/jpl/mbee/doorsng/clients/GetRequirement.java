@@ -1,4 +1,4 @@
-package gov.nasa.jpl.mbee.doorsng;
+package gov.nasa.jpl.mbee.doorsng.clients;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,6 +14,7 @@ import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.rdf.model.Statement;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 
+import gov.nasa.jpl.mbee.doorsng.DoorsClient;
 import gov.nasa.jpl.mbee.doorsng.model.Folder;
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 
