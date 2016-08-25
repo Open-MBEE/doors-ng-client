@@ -68,7 +68,7 @@ public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
 
-    private static DoorsFormAuthClient client;
+    public static DoorsFormAuthClient client;
     private static DoorsOAuthClient oclient;
     private static DoorsRootServicesHelper helper;
     private static String requirementFactory;

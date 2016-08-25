@@ -1,0 +1,30 @@
+<rdf:RDF
+    xmlns:calm="http://jazz.net/xmlns/prod/jazz/calm/1.0/"
+    xmlns:nav="http://jazz.net/ns/rm/navigation#"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:acp="http://jazz.net/ns/acp#"
+    xmlns:rm="http://www.ibm.com/xmlns/rdm/rdf/"
+    xmlns:oslc_rm="http://open-services.net/ns/rm#"
+    xmlns:oslc="http://open-services.net/ns/core#"
+    xmlns:public_rm_10="http://www.ibm.com/xmlns/rm/public/1.0/"
+    xmlns:dc="http://purl.org/dc/terms/"
+    xmlns:rm_property="https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/"
+    xmlns:jazz_rm="http://jazz.net/ns/rm#" > 
+  <rdf:Description rdf:about="https://doors-ng-uat.jpl.nasa.gov:9443/rm/resources/_v50qAWmkEeauX4BB8_HMfQ">
+    <dc:contributor rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/jts/users/cae.integ"/>
+    <nav:parent rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/rm/folders/_vi0fQWmkEeauX4BB8_HMfQ"/>
+    <oslc:instanceShape rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/_zVnV0eZaEeWvYbfYe0sscg"/>
+    <dc:description rdf:parseType="Literal"></dc:description>
+    <rm_property:_-QjFgVX8EeaeQbfhM_IIfQ>_18_0_5_3a6018b_1465219189980_425941_14323</rm_property:_-QjFgVX8EeaeQbfhM_IIfQ>
+    <dc:created rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2016-08-24T02:44:59.174Z</dc:created>
+    <rdf:type rdf:resource="http://open-services.net/ns/rm#Requirement"/>
+    <dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">147003</dc:identifier>
+    <dc:creator rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/jts/users/cae.integ"/>
+    <dc:modified rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2016-08-24T15:17:14.24Z</dc:modified>
+    <jazz_rm:primaryText>example text </jazz_rm:primaryText>
+    <dc:title rdf:parseType="Literal">axel-requirement2</dc:title>
+    <rdf:type rdf:resource="http://jazz.net/ns/rm#Text"/>
+    <acp:accessControl rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/rm/accessControl/_xYndoOZaEeWvYbfYe0sscg"/>
+    <oslc:serviceProvider rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/rm/oslc_rm/_xYndoOZaEeWvYbfYe0sscg/services.xml"/>
+  </rdf:Description>
+</rdf:RDF>
