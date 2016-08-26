@@ -232,7 +232,7 @@ public class DoorsClient {
 
             if (response.getStatusCode() == HttpStatus.SC_OK) {
                 String requirement = response.getEntity(String.class);
-//                requirement.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+                // requirement.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
 
                 return requirement;
 
@@ -247,7 +247,7 @@ public class DoorsClient {
         return null;
 
     }
-    
+
     public Requirement[] getRequirements() {
 
         OslcQuery query = new OslcQuery(client, queryCapability);
@@ -275,11 +275,11 @@ public class DoorsClient {
         return create(requirement, null);
 
     }
-    
+
     public String createRequirementFromRDF(String requirement) {
 
-    	ClientResponse response;
-        
+        ClientResponse response;
+
         try {
 
             response = client.createResource2(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML,
@@ -379,23 +379,24 @@ public class DoorsClient {
 
     }
 
-    public static int updateRequirementFromRDF(String entityBody, String  requirementURL) {
+    public static int updateRequirementFromRDF(String entityBody, String requirementURL) {
 
-        ClientResponse response;       
+        ClientResponse response;
 
         try {
 
             Requirement check = getRequirement(requirementURL);
 
-//            response = client.updateResource(requirement.getResourceUrl(), requirement,
-//                            OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
-            response = client.updateResource2(requirementURL, entityBody,
-                    OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
-            
+            // response = client.updateResource(requirement.getResourceUrl(), requirement,
+            // OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML,
+            // check.getEtag());
+            response = client.updateResource2(requirementURL, entityBody, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+
             response.consumeContent();
 
             return response.getStatusCode();
-            
+
 
         } catch (Exception e) {
 
@@ -406,7 +407,7 @@ public class DoorsClient {
         return 0;
 
     }
-    
+
     public RequirementCollection getRequirementCollection(String resourceUrl) {
 
         ClientResponse response = null;
@@ -900,6 +901,7 @@ public class DoorsClient {
 
     /***
      * Author: Bruce Meeks Jr
+     * 
      * @param project name
      * @return all artifacts and owned attributes for the specified project
      */
@@ -926,6 +928,7 @@ public class DoorsClient {
 
     /***
      * Author: Bruce Meeks Jr
+     * 
      * @param project name
      * @return true/false is project exists in DNG
      */
@@ -1015,7 +1018,11 @@ public class DoorsClient {
 
             for (Property property : properties) {
 
-                projectProperties.put(property.getTitle(), property.getPropertyDefinition());
+                if (property.getTitle() != null) {
+                    if (property.getTitle().equals(sysmlid)) {
+                        return true;
+                    }
+                }
 
             }
 
@@ -1025,8 +1032,8 @@ public class DoorsClient {
                 return false;
             }
 
-        }
-        catch (ResourceNotFoundException e) {
+
+        } catch (ResourceNotFoundException e) {
             e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
@@ -1042,7 +1049,8 @@ public class DoorsClient {
      * 
      * @param artifactType
      * @param attribute
-     * @return true/false if specified attribute has been created in DNG for the specified artifact type
+     * @return true/false if specified attribute has been created in DNG for the specified artifact
+     *         type
      * @throws Exception
      */
     public boolean doesAttributeExist(String artifactType, String attribute) throws Exception {
@@ -1076,47 +1084,48 @@ public class DoorsClient {
     }
 
     public static void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
-			String customLinkURL) {
-		
-		// first do a GET to check if source requirement exists, and also to get its RDF representation
-		String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
-		
-		if(srcReqAsRDF == null){
-			System.err.println("Resource does not exist and cannot be updated: " + sourceRequirementURL);
-			return;
-		}
-		
-		// parse the RDF representation of the resource as RDF model		
-		InputStream is = new ByteArrayInputStream(srcReqAsRDF.getBytes());
-		Model rdfModel = ModelFactory.createDefaultModel();
-		rdfModel.read(is, sourceRequirementURL);
-		
-		// print RDF model to console for verification
-		OutputStream outputStream = new ByteArrayOutputStream();
-		rdfModel.write(outputStream);
-		String content = outputStream.toString();
-		System.out.println(content);
-		
-		// set up RDF resources
-		Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
-		Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
-		com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
-		
-		// check if the requirement already has custom link value(s)
-		// if yes, delete them
-		sourceRequirementResource.removeAll(customLinkProperty);
-		
-		// add the triple describing the new custom link value		
-		sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
-		
-		// transform RDF model describing requirement into RDF
-		OutputStream outputStream2 = new ByteArrayOutputStream();
-		rdfModel.write(outputStream2);
-		String updatedSrcReqAsRDF = outputStream2.toString();
-		
-		// perform the update
-		int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
-		System.out.println("Update statusCode:" + statusCode);
-	}
-    
+                    String customLinkURL) {
+
+        // first do a GET to check if source requirement exists, and also to get its RDF
+        // representation
+        String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
+
+        if (srcReqAsRDF == null) {
+            System.err.println("Resource does not exist and cannot be updated: " + sourceRequirementURL);
+            return;
+        }
+
+        // parse the RDF representation of the resource as RDF model
+        InputStream is = new ByteArrayInputStream(srcReqAsRDF.getBytes());
+        Model rdfModel = ModelFactory.createDefaultModel();
+        rdfModel.read(is, sourceRequirementURL);
+
+        // print RDF model to console for verification
+        OutputStream outputStream = new ByteArrayOutputStream();
+        rdfModel.write(outputStream);
+        String content = outputStream.toString();
+        System.out.println(content);
+
+        // set up RDF resources
+        Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
+        Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
+        com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
+
+        // check if the requirement already has custom link value(s)
+        // if yes, delete them
+        sourceRequirementResource.removeAll(customLinkProperty);
+
+        // add the triple describing the new custom link value
+        sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
+
+        // transform RDF model describing requirement into RDF
+        OutputStream outputStream2 = new ByteArrayOutputStream();
+        rdfModel.write(outputStream2);
+        String updatedSrcReqAsRDF = outputStream2.toString();
+
+        // perform the update
+        int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
+        System.out.println("Update statusCode:" + statusCode);
+    }
+
 }
