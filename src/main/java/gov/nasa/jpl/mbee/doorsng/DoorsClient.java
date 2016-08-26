@@ -1,9 +1,12 @@
 package gov.nasa.jpl.mbee.doorsng;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
 import java.net.HttpCookie;
@@ -57,10 +60,15 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.Resource;
+
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 import gov.nasa.jpl.mbee.doorsng.model.RequirementCollection;
 import gov.nasa.jpl.mbee.doorsng.model.Folder;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsOAuthClient;
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsOslcClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsFormAuthClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsRootServicesHelper;
 
@@ -70,6 +78,7 @@ public class DoorsClient {
 
     public static DoorsFormAuthClient client;
     private static DoorsOAuthClient oclient;
+    private static DoorsOslcClient oslcClient;
     private static DoorsRootServicesHelper helper;
     private static String requirementFactory;
     private static String requirementCollectionFactory;
@@ -186,7 +195,7 @@ public class DoorsClient {
         return client.getProject();
     }
 
-    public Requirement getRequirement(String resourceUrl) {
+    public static Requirement getRequirement(String resourceUrl) {
 
         ClientResponse response = null;
 
@@ -212,7 +221,7 @@ public class DoorsClient {
 
     }
 
-    public String getRequirementAsRDF(String resourceUrl) {
+    public static String getRequirementAsRDF(String resourceUrl) {
 
         ClientResponse response = null;
 
@@ -369,7 +378,7 @@ public class DoorsClient {
 
     }
 
-    public int updateRequirementFromRDF(String entityBody, String  requirementURL) {
+    public static int updateRequirementFromRDF(String entityBody, String  requirementURL) {
 
         ClientResponse response;       
 
@@ -1065,6 +1074,49 @@ public class DoorsClient {
 
     }
 
-
+    public static void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
+			String customLinkURL) {
+		
+		// first do a GET to check if source requirement exists, and also to get its RDF representation
+		String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
+		
+		if(srcReqAsRDF == null){
+			System.err.println("Resource does not exist and cannot be updated: " + sourceRequirementURL);
+			return;
+		}
+		
+		// parse the RDF representation of the resource as RDF model		
+		InputStream is = new ByteArrayInputStream(srcReqAsRDF.getBytes());
+		Model rdfModel = ModelFactory.createDefaultModel();
+		rdfModel.read(is, sourceRequirementURL);
+		
+		// print RDF model to console for verification
+		OutputStream outputStream = new ByteArrayOutputStream();
+		rdfModel.write(outputStream);
+		String content = outputStream.toString();
+		System.out.println(content);
+		
+		// set up RDF resources
+		Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
+		Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
+		com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
+		
+		// check if the requirement already has custom link value(s)
+		// if yes, delete them
+		sourceRequirementResource.removeAll(customLinkProperty);
+		
+		// add the triple describing the new custom link value		
+		sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
+		
+		// transform RDF model describing requirement into RDF
+		OutputStream outputStream2 = new ByteArrayOutputStream();
+		rdfModel.write(outputStream2);
+		String updatedSrcReqAsRDF = outputStream2.toString();
+		
+		// perform the update
+		int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
+		System.out.println("Update statusCode:" + statusCode);
+	}
+    
 
 }
