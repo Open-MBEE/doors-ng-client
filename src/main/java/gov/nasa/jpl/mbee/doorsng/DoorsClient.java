@@ -64,6 +64,7 @@ import gov.nasa.jpl.mbee.doorsng.lib.DoorsOAuthClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsFormAuthClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsRootServicesHelper;
 
+
 public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
@@ -984,7 +985,5 @@ public class DoorsClient {
         return false;
 
     }
-
-
-
+    
 }
