@@ -1026,13 +1026,6 @@ public class DoorsClient {
 
             }
 
-            if (projectProperties.get(sysmlid) != null) {
-                return true;
-            } else {
-                return false;
-            }
-
-
         } catch (ResourceNotFoundException e) {
             e.printStackTrace();
         } catch (Exception e) {
@@ -1063,15 +1056,14 @@ public class DoorsClient {
 
             for (Property property : properties) {
 
-                projectProperties.put(property.getTitle(), property.getPropertyDefinition());
+                if (property.getTitle() != null) {
+                    if (property.getTitle().equals(attribute)) {
+                        return true;
+                    }
+                }
 
             }
 
-            if (projectProperties.get(attribute) != null) {
-                return true;
-            } else {
-                return false;
-            }
 
         } catch (ResourceNotFoundException e) {
             e.printStackTrace();
