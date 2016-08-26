@@ -1,0 +1,31 @@
+<rdf:RDF
+    xmlns:calm="http://jazz.net/xmlns/prod/jazz/calm/1.0/"
+    xmlns:nav="http://jazz.net/ns/rm/navigation#"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:acp="http://jazz.net/ns/acp#"
+    xmlns:rm="http://www.ibm.com/xmlns/rdm/rdf/"
+    xmlns:oslc_rm="http://open-services.net/ns/rm#"
+    xmlns:oslc="http://open-services.net/ns/core#"
+    xmlns:public_rm_10="http://www.ibm.com/xmlns/rm/public/1.0/"
+    xmlns:dc="http://purl.org/dc/terms/"
+    xmlns:rm_property="https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/"
+    xmlns:jazz_rm="http://jazz.net/ns/rm#" > 
+  <rdf:Description rdf:about="https://doors-ng-uat.jpl.nasa.gov:9443/rm/resources/_vag30WmkEeauX4BB8_HMfQ">
+    <dc:title rdf:parseType="Literal">axel-requirement</dc:title>
+    <oslc:serviceProvider rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/rm/oslc_rm/_xYndoOZaEeWvYbfYe0sscg/services.xml"/>
+    <dc:created rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2016-08-24T02:44:55.902Z</dc:created>
+    <dc:contributor rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/jts/users/cae.integ"/>
+    <dc:identifier rdf:datatype="http://www.w3.org/2001/XMLSchema#string">147002</dc:identifier>
+    <oslc:instanceShape rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/rm/types/_zVnV0eZaEeWvYbfYe0sscg"/>
+    <rdf:type rdf:resource="http://open-services.net/ns/rm#Requirement"/>
+    <dc:creator rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/jts/users/cae.integ"/>
+    <rdf:type rdf:resource="http://jazz.net/ns/rm#Text"/>
+    <acp:accessControl rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/rm/accessControl/_xYndoOZaEeWvYbfYe0sscg"/>
+    <oslc_rm:elaboratedBy rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/rm/resources/_v50qAWmkEeauX4BB8_HMfQ"/>
+    <dc:modified rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2016-08-24T15:17:16.813Z</dc:modified>
+    <rm_property:_-QjFgVX8EeaeQbfhM_IIfQ>_18_0_5_3a6018b_1461004728722_891505_14456</rm_property:_-QjFgVX8EeaeQbfhM_IIfQ>
+    <nav:parent rdf:resource="https://doors-ng-uat.jpl.nasa.gov:9443/rm/folders/_vEoucWmkEeauX4BB8_HMfQ"/>
+    <jazz_rm:primaryText>My special example text </jazz_rm:primaryText>
+    <dc:description rdf:parseType="Literal"></dc:description>
+  </rdf:Description>
+</rdf:RDF>
