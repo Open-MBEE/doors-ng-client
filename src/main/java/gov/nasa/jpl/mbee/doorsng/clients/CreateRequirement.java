@@ -75,56 +75,8 @@ public class CreateRequirement {
 
 			System.out.println(content);
 
-			// for test
-			// doors.create(requirement);
-
 			doors.createRequirementFromRDF(content);
 
-//			// create httpclient
-//			DefaultHttpClient httpClient = new DefaultHttpClient(new ThreadSafeClientConnManager());
-//			httpClient.setRedirectStrategy(new RedirectStrategy() {
-//				@Override
-//				public HttpUriRequest getRedirect(HttpRequest request, HttpResponse response, HttpContext context) {
-//					return null;
-//				}
-//
-//				@Override
-//				public boolean isRedirected(HttpRequest request, HttpResponse response, HttpContext context) {
-//					return false;
-//				}
-//			});
-//
-//			// create clientConfig
-//			ClientConfig clientConfig = new ApacheHttpClientConfig(httpClient);
-//			javax.ws.rs.core.Application app = new javax.ws.rs.core.Application() {
-//				@Override
-//				public Set<Class<?>> getClasses() {
-//					Set<Class<?>> classes = new HashSet<Class<?>>();
-//					classes.addAll(JenaProvidersRegistry.getProviders());
-//					classes.addAll(Json4JProvidersRegistry.getProviders());
-//					return classes;
-//				}
-//			};
-//			clientConfig = clientConfig.applications(app);
-//
-//			RestClient restClient = new RestClient(clientConfig);
-//
-//			String requirementFactory = "https://doors-ng-uat.jpl.nasa.gov:9443/rm/requirementFactory?projectURL=https://doors-ng-uat.jpl.nasa.gov:9443/rm/process/project-areas/_xYndoOZaEeWvYbfYe0sscg";
-//
-//			 String response =
-//			 restClient.resource(requirementFactory).contentType("application/rdf+xml").accept("application/rdf+xml").header(OSLCConstants.OSLC_CORE_VERSION,"2.0").post(String.class,
-//					 content);
-//			 System.out.println("Test");
-			
-			
-			
-			
-			// response.consumeContent();
-			// if (response.getStatusCode() == HttpStatus.SC_CREATED) {
-			//
-			// System.out.println("POST successful");;
-			//
-			// }
 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
