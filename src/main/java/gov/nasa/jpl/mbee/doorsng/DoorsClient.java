@@ -78,7 +78,6 @@ public class DoorsClient {
 
     public static DoorsFormAuthClient client;
     private static DoorsOAuthClient oclient;
-    private static DoorsOslcClient oslcClient;
     private static DoorsRootServicesHelper helper;
     private static String requirementFactory;
     private static String requirementCollectionFactory;
@@ -195,7 +194,7 @@ public class DoorsClient {
         return client.getProject();
     }
 
-    public static Requirement getRequirement(String resourceUrl) {
+    public Requirement getRequirement(String resourceUrl) {
 
         ClientResponse response = null;
 
@@ -378,7 +377,7 @@ public class DoorsClient {
 
     }
 
-    public static int updateRequirementFromRDF(String entityBody, String  requirementURL) {
+    public int updateRequirementFromRDF(String entityBody, String  requirementURL) {
 
         ClientResponse response;       
 
@@ -1074,14 +1073,19 @@ public class DoorsClient {
 
     }
 
-    public static void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
+    public void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
 			String customLinkURL) {
 		
 		// first do a GET to check if source requirement exists, and also to get its RDF representation
 		String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
+		String targetReqAsRDF = getRequirementAsRDF(targetRequirementURL);
 		
 		if(srcReqAsRDF == null){
-			System.err.println("Resource does not exist and cannot be updated: " + sourceRequirementURL);
+			System.err.println("Source Resource does not exist and cannot be updated: " + sourceRequirementURL);
+			return;
+		}
+		if(targetReqAsRDF == null){
+			System.err.println("target Resource does not exist: " + targetRequirementURL);
 			return;
 		}
 		
@@ -1091,10 +1095,10 @@ public class DoorsClient {
 		rdfModel.read(is, sourceRequirementURL);
 		
 		// print RDF model to console for verification
-		OutputStream outputStream = new ByteArrayOutputStream();
-		rdfModel.write(outputStream);
-		String content = outputStream.toString();
-		System.out.println(content);
+//		OutputStream outputStream = new ByteArrayOutputStream();
+//		rdfModel.write(outputStream);
+//		String content = outputStream.toString();
+//		System.out.println(content);
 		
 		// set up RDF resources
 		Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
@@ -1103,7 +1107,7 @@ public class DoorsClient {
 		
 		// check if the requirement already has custom link value(s)
 		// if yes, delete them
-		sourceRequirementResource.removeAll(customLinkProperty);
+//		sourceRequirementResource.removeAll(customLinkProperty);
 		
 		// add the triple describing the new custom link value		
 		sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
