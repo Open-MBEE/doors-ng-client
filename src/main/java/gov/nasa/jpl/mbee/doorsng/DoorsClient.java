@@ -123,6 +123,8 @@ public class DoorsClient {
 
     public DoorsClient(String user, String password, String webContextUrl, String projectArea) throws Exception {
 
+        requirementArtifactType = "Requirement"; //assuming default artifact type since user didn't yuse constructor above
+
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
 
