@@ -79,7 +79,6 @@ public class DoorsClient {
 
     public static DoorsFormAuthClient client;
     private static DoorsOAuthClient oclient;
-    private static DoorsOslcClient oslcClient;
     private static DoorsRootServicesHelper helper;
     private static String requirementFactory;
     private static String requirementCollectionFactory;
@@ -198,7 +197,7 @@ public class DoorsClient {
         return client.getProject();
     }
 
-    public static Requirement getRequirement(String resourceUrl) {
+    public Requirement getRequirement(String resourceUrl) {
 
         ClientResponse response = null;
 
@@ -381,7 +380,8 @@ public class DoorsClient {
 
     }
 
-    public static int updateRequirementFromRDF(String entityBody, String requirementURL) {
+
+    public int updateRequirementFromRDF(String entityBody, String  requirementURL) {
 
         ClientResponse response;
 
@@ -1077,49 +1077,54 @@ public class DoorsClient {
 
     }
 
-    public static void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
-                    String customLinkURL) {
 
-        // first do a GET to check if source requirement exists, and also to get its RDF
-        // representation
-        String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
-
-        if (srcReqAsRDF == null) {
-            System.err.println("Resource does not exist and cannot be updated: " + sourceRequirementURL);
-            return;
-        }
-
-        // parse the RDF representation of the resource as RDF model
-        InputStream is = new ByteArrayInputStream(srcReqAsRDF.getBytes());
-        Model rdfModel = ModelFactory.createDefaultModel();
-        rdfModel.read(is, sourceRequirementURL);
-
-        // print RDF model to console for verification
-        OutputStream outputStream = new ByteArrayOutputStream();
-        rdfModel.write(outputStream);
-        String content = outputStream.toString();
-        System.out.println(content);
-
-        // set up RDF resources
-        Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
-        Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
-        com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
-
-        // check if the requirement already has custom link value(s)
-        // if yes, delete them
-        sourceRequirementResource.removeAll(customLinkProperty);
-
-        // add the triple describing the new custom link value
-        sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
-
-        // transform RDF model describing requirement into RDF
-        OutputStream outputStream2 = new ByteArrayOutputStream();
-        rdfModel.write(outputStream2);
-        String updatedSrcReqAsRDF = outputStream2.toString();
-
-        // perform the update
-        int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
-        System.out.println("Update statusCode:" + statusCode);
-    }
-
+    public void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
+			String customLinkURL) {
+		
+		// first do a GET to check if source requirement exists, and also to get its RDF representation
+		String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
+		String targetReqAsRDF = getRequirementAsRDF(targetRequirementURL);
+		
+		if(srcReqAsRDF == null){
+			System.err.println("Source Resource does not exist and cannot be updated: " + sourceRequirementURL);
+			return;
+		}
+		if(targetReqAsRDF == null){
+			System.err.println("target Resource does not exist: " + targetRequirementURL);
+			return;
+		}
+		
+		// parse the RDF representation of the resource as RDF model		
+		InputStream is = new ByteArrayInputStream(srcReqAsRDF.getBytes());
+		Model rdfModel = ModelFactory.createDefaultModel();
+		rdfModel.read(is, sourceRequirementURL);
+		
+		// print RDF model to console for verification
+//		OutputStream outputStream = new ByteArrayOutputStream();
+//		rdfModel.write(outputStream);
+//		String content = outputStream.toString();
+//		System.out.println(content);
+		
+		// set up RDF resources
+		Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
+		Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
+		com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
+		
+		// check if the requirement already has custom link value(s)
+		// if yes, delete them
+//		sourceRequirementResource.removeAll(customLinkProperty);
+		
+		// add the triple describing the new custom link value		
+		sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
+		
+		// transform RDF model describing requirement into RDF
+		OutputStream outputStream2 = new ByteArrayOutputStream();
+		rdfModel.write(outputStream2);
+		String updatedSrcReqAsRDF = outputStream2.toString();
+		
+		// perform the update
+		int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
+		System.out.println("Update statusCode:" + statusCode);
+	}
+    
 }
