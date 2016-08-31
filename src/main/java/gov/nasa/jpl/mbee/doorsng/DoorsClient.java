@@ -122,7 +122,8 @@ public class DoorsClient {
 
     public DoorsClient(String user, String password, String webContextUrl, String projectArea) throws Exception {
 
-        requirementArtifactType = "Requirement"; //assuming default artifact type since user didn't yuse constructor above
+        requirementArtifactType = "Requirement"; // assuming default artifact type since user didn't
+                                                 // use constructor above
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
@@ -381,7 +382,7 @@ public class DoorsClient {
     }
 
 
-    public int updateRequirementFromRDF(String entityBody, String  requirementURL) {
+    public int updateRequirementFromRDF(String entityBody, String requirementURL) {
 
         ClientResponse response;
 
@@ -909,7 +910,7 @@ public class DoorsClient {
      */
     public InputStream getAllArtifactTypes(String project) throws Exception {
 
-        HttpGet httpget = new HttpGet(doorsUrl + "publish/resources?projectName=" + project);
+        HttpGet httpget = new HttpGet(doorsUrl + "/publish/resources?projectName=" + project);
         InputStream artifactTypes = null;
         httpget.setHeader("Accept", "application/xml");
         httpget.setHeader("X-Jazz-CSRF-Prevent", JSESSIONID);
@@ -1079,52 +1080,109 @@ public class DoorsClient {
 
 
     public void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
-			String customLinkURL) {
-		
-		// first do a GET to check if source requirement exists, and also to get its RDF representation
-		String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
-		String targetReqAsRDF = getRequirementAsRDF(targetRequirementURL);
-		
-		if(srcReqAsRDF == null){
-			System.err.println("Source Resource does not exist and cannot be updated: " + sourceRequirementURL);
-			return;
-		}
-		if(targetReqAsRDF == null){
-			System.err.println("target Resource does not exist: " + targetRequirementURL);
-			return;
-		}
-		
-		// parse the RDF representation of the resource as RDF model		
-		InputStream is = new ByteArrayInputStream(srcReqAsRDF.getBytes());
-		Model rdfModel = ModelFactory.createDefaultModel();
-		rdfModel.read(is, sourceRequirementURL);
-		
-		// print RDF model to console for verification
-//		OutputStream outputStream = new ByteArrayOutputStream();
-//		rdfModel.write(outputStream);
-//		String content = outputStream.toString();
-//		System.out.println(content);
-		
-		// set up RDF resources
-		Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
-		Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
-		com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
-		
-		// check if the requirement already has custom link value(s)
-		// if yes, delete them
-//		sourceRequirementResource.removeAll(customLinkProperty);
-		
-		// add the triple describing the new custom link value		
-		sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
-		
-		// transform RDF model describing requirement into RDF
-		OutputStream outputStream2 = new ByteArrayOutputStream();
-		rdfModel.write(outputStream2);
-		String updatedSrcReqAsRDF = outputStream2.toString();
-		
-		// perform the update
-		int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
-		System.out.println("Update statusCode:" + statusCode);
-	}
-    
+                    String customLinkURL) {
+
+        // first do a GET to check if source requirement exists, and also to get its RDF
+        // representation
+        String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
+        String targetReqAsRDF = getRequirementAsRDF(targetRequirementURL);
+
+        if (srcReqAsRDF == null) {
+            System.err.println("Source Resource does not exist and cannot be updated: " + sourceRequirementURL);
+            return;
+        }
+        if (targetReqAsRDF == null) {
+            System.err.println("target Resource does not exist: " + targetRequirementURL);
+            return;
+        }
+
+        // parse the RDF representation of the resource as RDF model
+        InputStream is = new ByteArrayInputStream(srcReqAsRDF.getBytes());
+        Model rdfModel = ModelFactory.createDefaultModel();
+        rdfModel.read(is, sourceRequirementURL);
+
+        // print RDF model to console for verification
+        // OutputStream outputStream = new ByteArrayOutputStream();
+        // rdfModel.write(outputStream);
+        // String content = outputStream.toString();
+        // System.out.println(content);
+
+        // set up RDF resources
+        Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
+        Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
+        com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
+
+        // check if the requirement already has custom link value(s)
+        // if yes, delete them
+        // sourceRequirementResource.removeAll(customLinkProperty);
+
+        // add the triple describing the new custom link value
+        sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
+
+        // transform RDF model describing requirement into RDF
+        OutputStream outputStream2 = new ByteArrayOutputStream();
+        rdfModel.write(outputStream2);
+        String updatedSrcReqAsRDF = outputStream2.toString();
+
+        // perform the update
+        int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
+        System.out.println("Update statusCode:" + statusCode);
+    }
+
+    /***
+     * Author: Bruce Meeks Jr
+     * Description: Returns the name of a Requirement's artifact type using its id from the instance shape
+     * @param requirement
+     * @return artifactType
+     */
+    public String getArtifactType(Requirement requirement, String project) {
+        
+        String artifactType = "Requirement";
+                        
+        String artifactTypeId = requirement.getInstanceShape().getPath()
+                          .substring((requirement.getInstanceShape().getPath().lastIndexOf('/') + 1 )
+                                          ,requirement.getInstanceShape().getPath().length());
+        
+        try {
+
+            InputStream projectArtifactTypes = getAllArtifactTypes(project);
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projectArtifactTypes);
+
+            NodeList artifactTypes = doc.getElementsByTagName("attribute:objectType");
+            Node curArtifactType = null;
+            Attr curArtifactTypeNodeAttribute = null;
+
+            for (int at = 0; at < artifactTypes.getLength(); at++) {
+
+                curArtifactType = artifactTypes.item(at);
+
+                // iterating through all artifact types and their ids
+                for (int ata = 0; ata < curArtifactType.getAttributes().getLength(); ata++) {
+
+                    curArtifactTypeNodeAttribute = (Attr) curArtifactType.getAttributes().item(ata);
+
+                    if (!curArtifactTypeNodeAttribute.getName().equals("attribute:itemId")) {
+                        continue;
+
+                    }
+                    else {
+                        //when matching artifact type id is found, return its name
+                        if(curArtifactTypeNodeAttribute.getValue().equals(artifactTypeId)) {
+                            curArtifactTypeNodeAttribute = (Attr) curArtifactType.getAttributes().item(ata+1);
+                            return curArtifactTypeNodeAttribute.getValue();
+                        }
+                    }
+                }
+            }
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+        
+        return artifactTypeId;
+        
+    }
+
 }
