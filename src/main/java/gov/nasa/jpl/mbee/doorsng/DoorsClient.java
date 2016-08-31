@@ -1181,7 +1181,7 @@ public class DoorsClient {
             e.printStackTrace();
         }
         
-        return artifactTypeId;
+        return artifactType;
         
     }
 
