@@ -57,6 +57,7 @@ import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 import org.json.JSONObject;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -1078,7 +1079,6 @@ public class DoorsClient {
 
     }
 
-
     public void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
                     String customLinkURL) {
 
@@ -1130,19 +1130,20 @@ public class DoorsClient {
     }
 
     /***
-     * Author: Bruce Meeks Jr
-     * Description: Returns the name of a Requirement's artifact type using its id from the instance shape
+     * Author: Bruce Meeks Jr Description: Returns the name of a Requirement's artifact type using
+     * its id from the instance shape
+     * 
      * @param requirement
      * @return artifactType
      */
     public String getArtifactType(Requirement requirement, String project) {
-        
+
         String artifactType = "Requirement";
-                        
-        String artifactTypeId = requirement.getInstanceShape().getPath()
-                          .substring((requirement.getInstanceShape().getPath().lastIndexOf('/') + 1 )
-                                          ,requirement.getInstanceShape().getPath().length());
-        
+
+        String artifactTypeId = requirement.getInstanceShape().getPath().substring(
+                        (requirement.getInstanceShape().getPath().lastIndexOf('/') + 1),
+                        requirement.getInstanceShape().getPath().length());
+
         try {
 
             InputStream projectArtifactTypes = getAllArtifactTypes(project);
@@ -1166,23 +1167,98 @@ public class DoorsClient {
                     if (!curArtifactTypeNodeAttribute.getName().equals("attribute:itemId")) {
                         continue;
 
-                    }
-                    else {
-                        //when matching artifact type id is found, return its name
-                        if(curArtifactTypeNodeAttribute.getValue().equals(artifactTypeId)) {
-                            curArtifactTypeNodeAttribute = (Attr) curArtifactType.getAttributes().item(ata+1);
+                    } else {
+                        // when matching artifact type id is found, return its name
+                        if (curArtifactTypeNodeAttribute.getValue().equals(artifactTypeId)) {
+                            curArtifactTypeNodeAttribute = (Attr) curArtifactType.getAttributes().item(ata + 1);
                             return curArtifactTypeNodeAttribute.getValue();
                         }
                     }
                 }
             }
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         return artifactType;
-        
+
+    }
+
+    /***
+     * Author: Bruce Meeks Jr
+     * Description: This method will determine if a specific artifact has any link relationships in its DNG project
+     * @param resourceURL
+     * @param project
+     * @return true/false
+     */
+    public boolean artifactHasLinks(String resourceURL, String project) {
+
+
+        String resourceID = resourceURL.substring(resourceURL.lastIndexOf('/') + 1);
+
+        try {
+
+            InputStream projectArtifactTypes = getAllArtifactTypes(project);
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projectArtifactTypes);
+
+            NodeList artifactTypes = doc.getElementsByTagName("ds:artifact");
+
+            Node curArtifactNode = null;
+            NodeList curArtifactChildNodes = null;
+            Node curArtifactChildNode = null;
+            NamedNodeMap curArtifactAttributes = null;
+
+            boolean artifactFound = false;
+
+            for (int x = 0; x < artifactTypes.getLength(); x++) {
+
+                curArtifactNode = artifactTypes.item(x);
+                curArtifactAttributes = curArtifactNode.getAttributes();
+
+                for (int s = 0; s < curArtifactAttributes.getLength(); s++) {
+
+                    if (curArtifactAttributes.item(s).getNodeName().equals("attribute:itemId")) {
+
+                        if (curArtifactAttributes.item(s).getNodeValue().equals(resourceID)) {
+                            artifactFound = true;
+                        } else {
+                            break;
+                        }
+
+                    }
+
+
+                }
+
+                // if artifact found, check for links
+                if (artifactFound) {
+
+                    curArtifactChildNodes = curArtifactNode.getChildNodes();
+
+                    for (int q = 0; q < curArtifactChildNodes.getLength(); q++) {
+
+                        curArtifactChildNode = curArtifactChildNodes.item(q);
+
+                        if (curArtifactChildNode.getNodeName().equals("ds:traceability")) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+
+                } else {
+                    continue;
+                }
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
 }
