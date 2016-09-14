@@ -1266,17 +1266,20 @@ public class DoorsClient {
     }
 
     /***
-     * Author: Bruce Meeks Jr Description: This method will return the resource URL of the target
-     * artifact of a link relations
+     * Author: Bruce Meeks Jr
      * 
+     * Description: This method returns a data structure encapsulating all different types of link
+     * relationships between the specified source artifact and its target artifact counterpart
+     *
      * @param sourceResourceURL
      * @param project
-     * @return true/false
+     * @return HashMap of link relationships
      */
-    public HashMap<String,HashMap<String,ArrayList<String>>> getArtifactLinkTarget(String sourceResourceURL, String project) {
+    public HashMap<String, HashMap<String, ArrayList<String>>> getArtifactLinks(String sourceResourceURL,
+                    String project) {
 
-        HashMap<String,HashMap<String,ArrayList<String>>> curArtifactLinkRelationships =
-                        new HashMap<String,HashMap<String,ArrayList<String>>>();
+        HashMap<String, HashMap<String, ArrayList<String>>> curArtifactLinkRelationships =
+                        new HashMap<String, HashMap<String, ArrayList<String>>>();
 
         String resourceID = sourceResourceURL.substring(sourceResourceURL.lastIndexOf('/') + 1);
 
@@ -1293,10 +1296,11 @@ public class DoorsClient {
             NodeList curArtifactChildNodes = null;
             Node curArtifactChildNode = null;
             NamedNodeMap curArtifactAttributes = null;
-            
+            Node curLinkNode = null;
+
             String curLinkLabel = "";
             String curTargetURL = "";
-            HashMap<String,ArrayList<String>> linkRelationships = new HashMap<String,ArrayList<String>>();
+            HashMap<String, ArrayList<String>> linkRelationships = new HashMap<String, ArrayList<String>>();
 
             for (int x = 0; x < artifactTypes.getLength(); x++) {
 
@@ -1309,62 +1313,66 @@ public class DoorsClient {
 
                         if (curArtifactAttributes.item(s).getNodeValue().equals(resourceID)) {
 
-
-                            // found artifact, now find artifacts it has relationships with
-
                             curArtifactChildNodes = curArtifactNode.getChildNodes();
 
                             for (int q = 0; q < curArtifactChildNodes.getLength(); q++) {
 
                                 curArtifactChildNode = curArtifactChildNodes.item(q);
 
+                                // if artifact resource has traceability properties then it has link
+                                // relationships in DNG
                                 if (curArtifactChildNode.getNodeName().equals("ds:traceability")) {
 
-                                    linkRelationships = new HashMap<String,ArrayList<String>>();
+                                    linkRelationships = new HashMap<String, ArrayList<String>>();
 
-                                    for (int f = 0; f < curArtifactChildNode.getChildNodes()
-                                                    .getLength(); f++) {
+                                    int traceChilds = curArtifactChildNode.getChildNodes().getLength();
 
-                                        curArtifactChildNode =
-                                                        curArtifactChildNode.getChildNodes().item(f);
+                                    for (int f = 0; f < traceChilds; f++) {
 
+                                        curArtifactChildNode = curArtifactChildNode.getChildNodes().item(f);
 
-                                        for (int a = 0; a < curArtifactChildNode.getChildNodes().getLength(); a++) {
+                                        int linkNum = curArtifactChildNode.getChildNodes().getLength();
 
-                                             if(curArtifactChildNode.getChildNodes().item(a).getNodeName().equals("rrm:title")){
-                                                 
-                                                 curLinkLabel = curArtifactChildNode.getChildNodes().item(a)
-                                                                 .getTextContent();
-                                                 
-                                                 
-                                                 
-                                                 continue;
-                                             }
+                                        // processing each link relationship found for specified
+                                        // artifact
+                                        for (int a = 0; a < linkNum; a++) {
 
-                                             if(curArtifactChildNode.getChildNodes().item(a).getNodeName().equals("rrm:relation")){
+                                            curLinkNode = curArtifactChildNode.getChildNodes().item(a);
 
-                                                 curTargetURL= curArtifactChildNode.getChildNodes().item(a)
-                                                 .getTextContent();
-                                                 
-                                                 //check if label is already in map already
-                                                 if(linkRelationships.containsKey(curLinkLabel)) {
-                                                     
-                                                     linkRelationships.get(curLinkLabel).add(curTargetURL);
-                                                     
-                                                 }
-                                                 else{
-                                                     linkRelationships.put(curLinkLabel,new ArrayList<String>());
-                                                     linkRelationships.get(curLinkLabel).add(curTargetURL);
+                                            int linkNodeChildren = curLinkNode.getChildNodes().getLength();
 
-                                                 }
-                                                 
-                                                 
-                                                 break;
-                                            
-                                                         
+                                            // find and store each distinguishing Link Label and the
+                                            // target artifact's URL
+                                            for (int c = 0; c < linkNodeChildren; c++) {
 
-                                             }
+                                                if (curLinkNode.getChildNodes().item(c).getNodeName()
+                                                                .equals("rrm:title")) {
 
+                                                    curLinkLabel = curLinkNode.getChildNodes().item(c).getTextContent();
+
+                                                    continue;
+                                                }
+
+                                                if (curLinkNode.getChildNodes().item(c).getNodeName()
+                                                                .equals("rrm:relation")) {
+
+                                                    curTargetURL = curLinkNode.getChildNodes().item(c).getTextContent();
+
+                                                    if (linkRelationships.containsKey(curLinkLabel)) {
+
+                                                        linkRelationships.get(curLinkLabel).add(curTargetURL);
+
+                                                    } else {
+                                                        linkRelationships.put(curLinkLabel, new ArrayList<String>());
+                                                        linkRelationships.get(curLinkLabel).add(curTargetURL);
+
+                                                    }
+
+                                                    break;
+
+                                                }
+
+                                            } // cur Link Node
 
                                         }
 
@@ -1383,10 +1391,7 @@ public class DoorsClient {
 
                     }
 
-
                 }
-
-              
 
             }
 
