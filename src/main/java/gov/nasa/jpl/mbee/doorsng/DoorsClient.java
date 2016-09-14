@@ -1185,13 +1185,14 @@ public class DoorsClient {
     }
 
     /***
-     * Author: Bruce Meeks Jr
-     * Description: This method will determine if a specific artifact has any link relationships in its DNG project
+     * Author: Bruce Meeks Jr Description: This method will determine if a specific artifact has any
+     * link relationships in its DNG project
+     * 
      * @param resourceURL
      * @param project
-     * @return true/false
+     * @return number of links found
      */
-    public boolean artifactHasLinks(String resourceURL, String project) {
+    public int artifactHasLinks(String resourceURL, String project) {
 
 
         String resourceID = resourceURL.substring(resourceURL.lastIndexOf('/') + 1);
@@ -1242,11 +1243,13 @@ public class DoorsClient {
                         curArtifactChildNode = curArtifactChildNodes.item(q);
 
                         if (curArtifactChildNode.getNodeName().equals("ds:traceability")) {
-                            return true;
+
+                            return curArtifactChildNode.getFirstChild().getChildNodes().getLength();
+
                         }
                     }
 
-                    return false;
+                    return 0;
 
                 } else {
                     continue;
@@ -1258,7 +1261,140 @@ public class DoorsClient {
             e.printStackTrace();
         }
 
-        return false;
+        return 0;
+
     }
 
+    /***
+     * Author: Bruce Meeks Jr Description: This method will return the resource URL of the target
+     * artifact of a link relations
+     * 
+     * @param sourceResourceURL
+     * @param project
+     * @return true/false
+     */
+    public HashMap<String,HashMap<String,ArrayList<String>>> getArtifactLinkTarget(String sourceResourceURL, String project) {
+
+        HashMap<String,HashMap<String,ArrayList<String>>> curArtifactLinkRelationships =
+                        new HashMap<String,HashMap<String,ArrayList<String>>>();
+
+        String resourceID = sourceResourceURL.substring(sourceResourceURL.lastIndexOf('/') + 1);
+
+        try {
+
+            InputStream projectArtifactTypes = getAllArtifactTypes(project);
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projectArtifactTypes);
+
+            NodeList artifactTypes = doc.getElementsByTagName("ds:artifact");
+
+            Node curArtifactNode = null;
+            NodeList curArtifactChildNodes = null;
+            Node curArtifactChildNode = null;
+            NamedNodeMap curArtifactAttributes = null;
+            
+            String curLinkLabel = "";
+            String curTargetURL = "";
+            HashMap<String,ArrayList<String>> linkRelationships = new HashMap<String,ArrayList<String>>();
+
+            for (int x = 0; x < artifactTypes.getLength(); x++) {
+
+                curArtifactNode = artifactTypes.item(x);
+                curArtifactAttributes = curArtifactNode.getAttributes();
+
+                for (int s = 0; s < curArtifactAttributes.getLength(); s++) {
+
+                    if (curArtifactAttributes.item(s).getNodeName().equals("attribute:itemId")) {
+
+                        if (curArtifactAttributes.item(s).getNodeValue().equals(resourceID)) {
+
+
+                            // found artifact, now find artifacts it has relationships with
+
+                            curArtifactChildNodes = curArtifactNode.getChildNodes();
+
+                            for (int q = 0; q < curArtifactChildNodes.getLength(); q++) {
+
+                                curArtifactChildNode = curArtifactChildNodes.item(q);
+
+                                if (curArtifactChildNode.getNodeName().equals("ds:traceability")) {
+
+                                    linkRelationships = new HashMap<String,ArrayList<String>>();
+
+                                    for (int f = 0; f < curArtifactChildNode.getChildNodes()
+                                                    .getLength(); f++) {
+
+                                        curArtifactChildNode =
+                                                        curArtifactChildNode.getChildNodes().item(f);
+
+
+                                        for (int a = 0; a < curArtifactChildNode.getChildNodes().getLength(); a++) {
+
+                                             if(curArtifactChildNode.getChildNodes().item(a).getNodeName().equals("rrm:title")){
+                                                 
+                                                 curLinkLabel = curArtifactChildNode.getChildNodes().item(a)
+                                                                 .getTextContent();
+                                                 
+                                                 
+                                                 
+                                                 continue;
+                                             }
+
+                                             if(curArtifactChildNode.getChildNodes().item(a).getNodeName().equals("rrm:relation")){
+
+                                                 curTargetURL= curArtifactChildNode.getChildNodes().item(a)
+                                                 .getTextContent();
+                                                 
+                                                 //check if label is already in map already
+                                                 if(linkRelationships.containsKey(curLinkLabel)) {
+                                                     
+                                                     linkRelationships.get(curLinkLabel).add(curTargetURL);
+                                                     
+                                                 }
+                                                 else{
+                                                     linkRelationships.put(curLinkLabel,new ArrayList<String>());
+                                                     linkRelationships.get(curLinkLabel).add(curTargetURL);
+
+                                                 }
+                                                 
+                                                 
+                                                 break;
+                                            
+                                                         
+
+                                             }
+
+
+                                        }
+
+
+                                    }
+
+                                }
+                            }
+
+                            curArtifactLinkRelationships.put(sourceResourceURL, linkRelationships);
+
+
+                        } else {
+                            break;
+                        }
+
+                    }
+
+
+                }
+
+              
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return curArtifactLinkRelationships;
+
+    }
 }
