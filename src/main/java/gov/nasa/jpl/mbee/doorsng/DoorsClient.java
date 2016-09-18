@@ -115,12 +115,7 @@ public class DoorsClient {
         if (client.login() == HttpStatus.SC_OK) {
             JSESSIONID = client.getSessionId();
             if (projectArea != null) {
-                if(doesProjectExists(projectArea)){
                 setProject(projectArea);
-                }
-                else{
-                    setProject("");
-                }
             }
         }
 
@@ -143,7 +138,11 @@ public class DoorsClient {
         if (client.login() == HttpStatus.SC_OK) {
             JSESSIONID = client.getSessionId();
             if (projectArea != null) {
-                setProject(projectArea);
+                if (doesProjectExists(projectArea)) {
+                    setProject(projectArea);
+                } else {
+                    setProject("");
+                }
             }
         }
 
@@ -369,11 +368,13 @@ public class DoorsClient {
             Requirement check = getRequirement(requirement.getResourceUrl());
             Map<String, URI> fields = getFields();
             for (Map.Entry<String, URI> entry : fields.entrySet()) {
-                if (requirement.getCustomField(entry.getValue()) == null && check.getCustomField(entry.getValue()) != null) {
+                if (requirement.getCustomField(entry.getValue()) == null
+                                && check.getCustomField(entry.getValue()) != null) {
                     requirement.setCustomField(entry.getValue(), check.getCustomField(entry.getValue()));
                 }
             }
-            response = client.updateResource(requirement.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            response = client.updateResource(requirement.getResourceUrl(), requirement,
+                            OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
             response.consumeContent();
 
             if (response.getStatusCode() == HttpStatus.SC_OK) {
