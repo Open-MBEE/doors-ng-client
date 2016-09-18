@@ -115,7 +115,12 @@ public class DoorsClient {
         if (client.login() == HttpStatus.SC_OK) {
             JSESSIONID = client.getSessionId();
             if (projectArea != null) {
+                if(doesProjectExists(projectArea)){
                 setProject(projectArea);
+                }
+                else{
+                    setProject("");
+                }
             }
         }
 
