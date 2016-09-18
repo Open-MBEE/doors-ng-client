@@ -367,9 +367,13 @@ public class DoorsClient {
             requirement.setInstanceShape(shape.getAbout());
 
             Requirement check = getRequirement(requirement.getResourceUrl());
-
-            response = client.updateResource(requirement.getResourceUrl(), requirement,
-                            OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            Map<String, URI> fields = getFields();
+            for (Map.Entry<String, URI> entry : fields.entrySet()) {
+                if (requirement.getCustomField(entry.getValue()) == null && check.getCustomField(entry.getValue()) != null) {
+                    requirement.setCustomField(entry.getValue(), check.getCustomField(entry.getValue()));
+                }
+            }
+            response = client.updateResource(requirement.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
             response.consumeContent();
 
             if (response.getStatusCode() == HttpStatus.SC_OK) {
@@ -989,7 +993,7 @@ public class DoorsClient {
 
     /***
      * Author: Bruce Meeks Jr
-     * 
+     *
      * @param artifactType
      * @return true/false is artifact type user has specified, exist in DNG
      * @throws Exception
@@ -1011,7 +1015,7 @@ public class DoorsClient {
 
     /***
      * Author: Bruce Meeks Jr
-     * 
+     *
      * @param artifactType
      * @param sysmlId
      * @return true/false if sysmlid has been created for a specific artifact type
@@ -1048,7 +1052,7 @@ public class DoorsClient {
 
     /***
      * Author: Bruce Meeks Jr
-     * 
+     *
      * @param artifactType
      * @param attribute
      * @return true/false if specified attribute has been created in DNG for the specified artifact
