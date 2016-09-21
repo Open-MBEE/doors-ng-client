@@ -1,9 +1,12 @@
 package gov.nasa.jpl.mbee.doorsng;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
 import java.net.HttpCookie;
@@ -54,21 +57,28 @@ import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 import org.json.JSONObject;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.Resource;
 
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 import gov.nasa.jpl.mbee.doorsng.model.RequirementCollection;
 import gov.nasa.jpl.mbee.doorsng.model.Folder;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsOAuthClient;
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsOslcClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsFormAuthClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsRootServicesHelper;
+
 
 public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
 
-    private static DoorsFormAuthClient client;
+    public static DoorsFormAuthClient client;
     private static DoorsOAuthClient oclient;
     private static DoorsRootServicesHelper helper;
     private static String requirementFactory;
@@ -113,6 +123,9 @@ public class DoorsClient {
 
     public DoorsClient(String user, String password, String webContextUrl, String projectArea) throws Exception {
 
+        requirementArtifactType = "Requirement"; // assuming default artifact type since user didn't
+                                                 // use constructor above
+
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
 
@@ -125,7 +138,11 @@ public class DoorsClient {
         if (client.login() == HttpStatus.SC_OK) {
             JSESSIONID = client.getSessionId();
             if (projectArea != null) {
-                setProject(projectArea);
+                if (doesProjectExists(projectArea)) {
+                    setProject(projectArea);
+                } else {
+                    setProject("");
+                }
             }
         }
 
@@ -212,6 +229,32 @@ public class DoorsClient {
 
     }
 
+    public static String getRequirementAsRDF(String resourceUrl) {
+
+        ClientResponse response = null;
+
+        try {
+
+            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
+
+            if (response.getStatusCode() == HttpStatus.SC_OK) {
+                String requirement = response.getEntity(String.class);
+                // requirement.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+
+                return requirement;
+
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return null;
+
+    }
+
     public Requirement[] getRequirements() {
 
         OslcQuery query = new OslcQuery(client, queryCapability);
@@ -237,6 +280,32 @@ public class DoorsClient {
     public String create(Requirement requirement) {
 
         return create(requirement, null);
+
+    }
+
+    public String createRequirementFromRDF(String requirement) {
+
+        ClientResponse response;
+
+        try {
+
+            response = client.createResource2(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML);
+            response.consumeContent();
+
+            if (response.getStatusCode() == HttpStatus.SC_CREATED) {
+
+                return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return null;
 
     }
 
@@ -299,11 +368,13 @@ public class DoorsClient {
             Requirement check = getRequirement(requirement.getResourceUrl());
             Map<String, URI> fields = getFields();
             for (Map.Entry<String, URI> entry : fields.entrySet()) {
-                if (requirement.getCustomField(entry.getValue()) == null && check.getCustomField(entry.getValue()) != null) {
+                if (requirement.getCustomField(entry.getValue()) == null
+                                && check.getCustomField(entry.getValue()) != null) {
                     requirement.setCustomField(entry.getValue(), check.getCustomField(entry.getValue()));
                 }
             }
-            response = client.updateResource(requirement.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            response = client.updateResource(requirement.getResourceUrl(), requirement,
+                            OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
             response.consumeContent();
 
             if (response.getStatusCode() == HttpStatus.SC_OK) {
@@ -318,6 +389,36 @@ public class DoorsClient {
         }
 
         return null;
+
+    }
+
+
+    public int updateRequirementFromRDF(String entityBody, String requirementURL) {
+
+        ClientResponse response;
+
+        try {
+
+            Requirement check = getRequirement(requirementURL);
+
+            // response = client.updateResource(requirement.getResourceUrl(), requirement,
+            // OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML,
+            // check.getEtag());
+            response = client.updateResource2(requirementURL, entityBody, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+
+            response.consumeContent();
+
+            return response.getStatusCode();
+
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return 0;
 
     }
 
@@ -814,12 +915,13 @@ public class DoorsClient {
 
     /***
      * Author: Bruce Meeks Jr
+     * 
      * @param project name
      * @return all artifacts and owned attributes for the specified project
      */
     public InputStream getAllArtifactTypes(String project) throws Exception {
 
-        HttpGet httpget = new HttpGet(doorsUrl + "publish/resources?projectName=" + project);
+        HttpGet httpget = new HttpGet(doorsUrl + "/publish/resources?projectName=" + project);
         InputStream artifactTypes = null;
         httpget.setHeader("Accept", "application/xml");
         httpget.setHeader("X-Jazz-CSRF-Prevent", JSESSIONID);
@@ -840,6 +942,7 @@ public class DoorsClient {
 
     /***
      * Author: Bruce Meeks Jr
+     * 
      * @param project name
      * @return true/false is project exists in DNG
      */
@@ -929,18 +1032,15 @@ public class DoorsClient {
 
             for (Property property : properties) {
 
-                projectProperties.put(property.getTitle(), property.getPropertyDefinition());
+                if (property.getTitle() != null) {
+                    if (property.getTitle().equals(sysmlid)) {
+                        return true;
+                    }
+                }
 
             }
 
-            if (projectProperties.get(sysmlid) != null) {
-                return true;
-            } else {
-                return false;
-            }
-
-        }
-        catch (ResourceNotFoundException e) {
+        } catch (ResourceNotFoundException e) {
             e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
@@ -956,7 +1056,8 @@ public class DoorsClient {
      *
      * @param artifactType
      * @param attribute
-     * @return true/false if specified attribute has been created in DNG for the specified artifact type
+     * @return true/false if specified attribute has been created in DNG for the specified artifact
+     *         type
      * @throws Exception
      */
     public boolean doesAttributeExist(String artifactType, String attribute) throws Exception {
@@ -969,15 +1070,14 @@ public class DoorsClient {
 
             for (Property property : properties) {
 
-                projectProperties.put(property.getTitle(), property.getPropertyDefinition());
+                if (property.getTitle() != null) {
+                    if (property.getTitle().equals(attribute)) {
+                        return true;
+                    }
+                }
 
             }
 
-            if (projectProperties.get(attribute) != null) {
-                return true;
-            } else {
-                return false;
-            }
 
         } catch (ResourceNotFoundException e) {
             e.printStackTrace();
@@ -989,6 +1089,327 @@ public class DoorsClient {
 
     }
 
+    public void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
+                    String customLinkURL) {
+
+        // first do a GET to check if source requirement exists, and also to get its RDF
+        // representation
+        String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
+        String targetReqAsRDF = getRequirementAsRDF(targetRequirementURL);
+
+        if (srcReqAsRDF == null) {
+            System.err.println("Source Resource does not exist and cannot be updated: " + sourceRequirementURL);
+            return;
+        }
+        if (targetReqAsRDF == null) {
+            System.err.println("target Resource does not exist: " + targetRequirementURL);
+            return;
+        }
+
+        // parse the RDF representation of the resource as RDF model
+        InputStream is = new ByteArrayInputStream(srcReqAsRDF.getBytes());
+        Model rdfModel = ModelFactory.createDefaultModel();
+        rdfModel.read(is, sourceRequirementURL);
+
+        // print RDF model to console for verification
+        // OutputStream outputStream = new ByteArrayOutputStream();
+        // rdfModel.write(outputStream);
+        // String content = outputStream.toString();
+        // System.out.println(content);
+
+        // set up RDF resources
+        Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
+        Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
+        com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
+
+        // check if the requirement already has custom link value(s)
+        // if yes, delete them
+        // sourceRequirementResource.removeAll(customLinkProperty);
+
+        // add the triple describing the new custom link value
+        sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
+
+        // transform RDF model describing requirement into RDF
+        OutputStream outputStream2 = new ByteArrayOutputStream();
+        rdfModel.write(outputStream2);
+        String updatedSrcReqAsRDF = outputStream2.toString();
+
+        // perform the update
+        int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
+        System.out.println("Update statusCode:" + statusCode);
+    }
+
+    /***
+     * Author: Bruce Meeks Jr Description: Returns the name of a Requirement's artifact type using
+     * its id from the instance shape
+     * 
+     * @param requirement
+     * @return artifactType
+     */
+    public String getArtifactType(Requirement requirement, String project) {
+
+        String artifactType = "Requirement";
+
+        String artifactTypeId = requirement.getInstanceShape().getPath().substring(
+                        (requirement.getInstanceShape().getPath().lastIndexOf('/') + 1),
+                        requirement.getInstanceShape().getPath().length());
+
+        try {
+
+            InputStream projectArtifactTypes = getAllArtifactTypes(project);
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projectArtifactTypes);
+
+            NodeList artifactTypes = doc.getElementsByTagName("attribute:objectType");
+            Node curArtifactType = null;
+            Attr curArtifactTypeNodeAttribute = null;
+
+            for (int at = 0; at < artifactTypes.getLength(); at++) {
+
+                curArtifactType = artifactTypes.item(at);
+
+                // iterating through all artifact types and their ids
+                for (int ata = 0; ata < curArtifactType.getAttributes().getLength(); ata++) {
+
+                    curArtifactTypeNodeAttribute = (Attr) curArtifactType.getAttributes().item(ata);
+
+                    if (!curArtifactTypeNodeAttribute.getName().equals("attribute:itemId")) {
+                        continue;
+
+                    } else {
+                        // when matching artifact type id is found, return its name
+                        if (curArtifactTypeNodeAttribute.getValue().equals(artifactTypeId)) {
+                            curArtifactTypeNodeAttribute = (Attr) curArtifactType.getAttributes().item(ata + 1);
+                            return curArtifactTypeNodeAttribute.getValue();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return artifactType;
+
+    }
+
+    /***
+     * Author: Bruce Meeks Jr Description: This method will determine if a specific artifact has any
+     * link relationships in its DNG project
+     * 
+     * @param resourceURL
+     * @param project
+     * @return number of links found
+     */
+    public int artifactHasLinks(String resourceURL, String project) {
 
 
+        String resourceID = resourceURL.substring(resourceURL.lastIndexOf('/') + 1);
+
+        try {
+
+            InputStream projectArtifactTypes = getAllArtifactTypes(project);
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projectArtifactTypes);
+
+            NodeList artifactTypes = doc.getElementsByTagName("ds:artifact");
+
+            Node curArtifactNode = null;
+            NodeList curArtifactChildNodes = null;
+            Node curArtifactChildNode = null;
+            NamedNodeMap curArtifactAttributes = null;
+
+            boolean artifactFound = false;
+
+            for (int x = 0; x < artifactTypes.getLength(); x++) {
+
+                curArtifactNode = artifactTypes.item(x);
+                curArtifactAttributes = curArtifactNode.getAttributes();
+
+                for (int s = 0; s < curArtifactAttributes.getLength(); s++) {
+
+                    if (curArtifactAttributes.item(s).getNodeName().equals("attribute:itemId")) {
+
+                        if (curArtifactAttributes.item(s).getNodeValue().equals(resourceID)) {
+                            artifactFound = true;
+                        } else {
+                            break;
+                        }
+
+                    }
+
+
+                }
+
+                // if artifact found, check for links
+                if (artifactFound) {
+
+                    curArtifactChildNodes = curArtifactNode.getChildNodes();
+
+                    for (int q = 0; q < curArtifactChildNodes.getLength(); q++) {
+
+                        curArtifactChildNode = curArtifactChildNodes.item(q);
+
+                        if (curArtifactChildNode.getNodeName().equals("ds:traceability")) {
+
+                            return curArtifactChildNode.getFirstChild().getChildNodes().getLength();
+
+                        }
+                    }
+
+                    return 0;
+
+                } else {
+                    continue;
+                }
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+
+    }
+
+    /***
+     * Author: Bruce Meeks Jr
+     * 
+     * Description: This method returns a data structure encapsulating all different types of link
+     * relationships between the specified source artifact and its target artifact counterpart
+     *
+     * @param sourceResourceURL
+     * @param project
+     * @return HashMap of link relationships
+     */
+    public HashMap<String, HashMap<String, ArrayList<String>>> getArtifactLinks(String sourceResourceURL,
+                    String project) {
+
+        HashMap<String, HashMap<String, ArrayList<String>>> curArtifactLinkRelationships =
+                        new HashMap<String, HashMap<String, ArrayList<String>>>();
+
+        String resourceID = sourceResourceURL.substring(sourceResourceURL.lastIndexOf('/') + 1);
+
+        try {
+
+            InputStream projectArtifactTypes = getAllArtifactTypes(project);
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projectArtifactTypes);
+
+            NodeList artifactTypes = doc.getElementsByTagName("ds:artifact");
+
+            Node curArtifactNode = null;
+            NodeList curArtifactChildNodes = null;
+            Node curArtifactChildNode = null;
+            NamedNodeMap curArtifactAttributes = null;
+            Node curLinkNode = null;
+
+            String curLinkLabel = "";
+            String curTargetURL = "";
+            HashMap<String, ArrayList<String>> linkRelationships = new HashMap<String, ArrayList<String>>();
+
+            for (int x = 0; x < artifactTypes.getLength(); x++) {
+
+                curArtifactNode = artifactTypes.item(x);
+                curArtifactAttributes = curArtifactNode.getAttributes();
+
+                for (int s = 0; s < curArtifactAttributes.getLength(); s++) {
+
+                    if (curArtifactAttributes.item(s).getNodeName().equals("attribute:itemId")) {
+
+                        if (curArtifactAttributes.item(s).getNodeValue().equals(resourceID)) {
+
+                            curArtifactChildNodes = curArtifactNode.getChildNodes();
+
+                            for (int q = 0; q < curArtifactChildNodes.getLength(); q++) {
+
+                                curArtifactChildNode = curArtifactChildNodes.item(q);
+
+                                // if artifact resource has traceability properties then it has link
+                                // relationships in DNG
+                                if (curArtifactChildNode.getNodeName().equals("ds:traceability")) {
+
+                                    linkRelationships = new HashMap<String, ArrayList<String>>();
+
+                                    int traceChilds = curArtifactChildNode.getChildNodes().getLength();
+
+                                    for (int f = 0; f < traceChilds; f++) {
+
+                                        curArtifactChildNode = curArtifactChildNode.getChildNodes().item(f);
+
+                                        int linkNum = curArtifactChildNode.getChildNodes().getLength();
+
+                                        // processing each link relationship found for specified
+                                        // artifact
+                                        for (int a = 0; a < linkNum; a++) {
+
+                                            curLinkNode = curArtifactChildNode.getChildNodes().item(a);
+
+                                            int linkNodeChildren = curLinkNode.getChildNodes().getLength();
+
+                                            // find and store each distinguishing Link Label and the
+                                            // target artifact's URL
+                                            for (int c = 0; c < linkNodeChildren; c++) {
+
+                                                if (curLinkNode.getChildNodes().item(c).getNodeName()
+                                                                .equals("rrm:title")) {
+
+                                                    curLinkLabel = curLinkNode.getChildNodes().item(c).getTextContent();
+
+                                                    continue;
+                                                }
+
+                                                if (curLinkNode.getChildNodes().item(c).getNodeName()
+                                                                .equals("rrm:relation")) {
+
+                                                    curTargetURL = curLinkNode.getChildNodes().item(c).getTextContent();
+
+                                                    if (linkRelationships.containsKey(curLinkLabel)) {
+
+                                                        linkRelationships.get(curLinkLabel).add(curTargetURL);
+
+                                                    } else {
+                                                        linkRelationships.put(curLinkLabel, new ArrayList<String>());
+                                                        linkRelationships.get(curLinkLabel).add(curTargetURL);
+
+                                                    }
+
+                                                    break;
+
+                                                }
+
+                                            } // cur Link Node
+
+                                        }
+
+
+                                    }
+
+                                }
+                            }
+
+                            curArtifactLinkRelationships.put(sourceResourceURL, linkRelationships);
+
+
+                        } else {
+                            break;
+                        }
+
+                    }
+
+                }
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return curArtifactLinkRelationships;
+
+    }
 }
