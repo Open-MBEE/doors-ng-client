@@ -1,9 +1,12 @@
 package gov.nasa.jpl.mbee.doorsng;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
 import java.net.HttpCookie;
@@ -23,6 +26,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.xml.namespace.QName;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
@@ -49,19 +54,31 @@ import org.eclipse.lyo.client.oslc.resources.RmUtil;
 import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
 import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
+import org.json.JSONObject;
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.Resource;
 
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 import gov.nasa.jpl.mbee.doorsng.model.RequirementCollection;
 import gov.nasa.jpl.mbee.doorsng.model.Folder;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsOAuthClient;
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsOslcClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsFormAuthClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsRootServicesHelper;
+
 
 public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
 
-    private static DoorsFormAuthClient client;
+    public static DoorsFormAuthClient client;
     private static DoorsOAuthClient oclient;
     private static DoorsRootServicesHelper helper;
     private static String requirementFactory;
@@ -78,8 +95,13 @@ public class DoorsClient {
     public static String project;
     public static String projectId;
     public static String rootFolder;
+    private String requirementArtifactType = "";
 
-    public DoorsClient(String user, String password, String webContextUrl, String projectArea) throws Exception {
+
+    public DoorsClient(String user, String password, String webContextUrl, String projectArea, String artifactType)
+                    throws Exception {
+
+        requirementArtifactType = artifactType;
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
@@ -95,11 +117,39 @@ public class DoorsClient {
             if (projectArea != null) {
                 setProject(projectArea);
             }
-       }
+        }
 
     }
 
-    public DoorsClient(String consumerKey, String consumerSecret, String user, String password, String webContextUrl) throws Exception {
+    public DoorsClient(String user, String password, String webContextUrl, String projectArea) throws Exception {
+
+        requirementArtifactType = "Requirement"; // assuming default artifact type since user didn't
+                                                 // use constructor above
+
+        projectProperties = new HashMap<String, URI>();
+        projectPropertiesDetails = new HashMap<String, String>();
+
+        doorsUrl = webContextUrl;
+
+        helper = new DoorsRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
+        String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
+        client = helper.initFormClient(user, password, authUrl);
+
+        if (client.login() == HttpStatus.SC_OK) {
+            JSESSIONID = client.getSessionId();
+            if (projectArea != null) {
+                if (doesProjectExists(projectArea)) {
+                    setProject(projectArea);
+                } else {
+                    setProject("");
+                }
+            }
+        }
+
+    }
+
+    public DoorsClient(String consumerKey, String consumerSecret, String user, String password, String webContextUrl,
+                    Boolean ignore) throws Exception {
 
         projectProperties = new HashMap<String, URI>();
         projectPropertiesDetails = new HashMap<String, String>();
@@ -111,7 +161,7 @@ public class DoorsClient {
         if (client != null) {
             try {
 
-                oclient.getResource(doorsUrl,OSLCConstants.CT_RDF);
+                oclient.getResource(doorsUrl, OSLCConstants.CT_RDF);
 
             } catch (OAuthRedirectException oauthE) {
 
@@ -161,7 +211,7 @@ public class DoorsClient {
 
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
 
-            if(response.getStatusCode() == HttpStatus.SC_OK) {
+            if (response.getStatusCode() == HttpStatus.SC_OK) {
                 Requirement requirement = response.getEntity(Requirement.class);
                 requirement.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
 
@@ -176,6 +226,32 @@ public class DoorsClient {
         }
 
         return new Requirement();
+
+    }
+
+    public static String getRequirementAsRDF(String resourceUrl) {
+
+        ClientResponse response = null;
+
+        try {
+
+            response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
+
+            if (response.getStatusCode() == HttpStatus.SC_OK) {
+                String requirement = response.getEntity(String.class);
+                // requirement.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+
+                return requirement;
+
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return null;
 
     }
 
@@ -207,6 +283,32 @@ public class DoorsClient {
 
     }
 
+    public String createRequirementFromRDF(String requirement) {
+
+        ClientResponse response;
+
+        try {
+
+            response = client.createResource2(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML);
+            response.consumeContent();
+
+            if (response.getStatusCode() == HttpStatus.SC_CREATED) {
+
+                return response.getHeaders().getFirst(HttpHeaders.LOCATION);
+
+            }
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return null;
+
+    }
+
     public String create(Requirement requirement, String shapeTitle) {
 
         ClientResponse response;
@@ -215,17 +317,18 @@ public class DoorsClient {
         try {
 
             if (shapeTitle == null) {
-                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "Requirement");
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, requirementArtifactType);
             } else {
                 shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, shapeTitle);
             }
 
             requirement.setInstanceShape(shape.getAbout());
 
-            response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            response = client.createResource(requirementFactory, requirement, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML);
             response.consumeContent();
 
-            if(response.getStatusCode() == HttpStatus.SC_CREATED) {
+            if (response.getStatusCode() == HttpStatus.SC_CREATED) {
 
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
 
@@ -255,7 +358,7 @@ public class DoorsClient {
         try {
 
             if (shapeTitle == null) {
-                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "Requirement");
+                shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, requirementArtifactType);
             } else {
                 shape = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, shapeTitle);
             }
@@ -263,11 +366,18 @@ public class DoorsClient {
             requirement.setInstanceShape(shape.getAbout());
 
             Requirement check = getRequirement(requirement.getResourceUrl());
-
-            response = client.updateResource(requirement.getResourceUrl(), requirement, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            Map<String, URI> fields = getFields();
+            for (Map.Entry<String, URI> entry : fields.entrySet()) {
+                if (requirement.getCustomField(entry.getValue()) == null
+                                && check.getCustomField(entry.getValue()) != null) {
+                    requirement.setCustomField(entry.getValue(), check.getCustomField(entry.getValue()));
+                }
+            }
+            response = client.updateResource(requirement.getResourceUrl(), requirement,
+                            OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
             response.consumeContent();
 
-            if(response.getStatusCode() == HttpStatus.SC_OK) {
+            if (response.getStatusCode() == HttpStatus.SC_OK) {
                 return requirement.getResourceUrl();
 
             }
@@ -282,6 +392,36 @@ public class DoorsClient {
 
     }
 
+
+    public int updateRequirementFromRDF(String entityBody, String requirementURL) {
+
+        ClientResponse response;
+
+        try {
+
+            Requirement check = getRequirement(requirementURL);
+
+            // response = client.updateResource(requirement.getResourceUrl(), requirement,
+            // OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML,
+            // check.getEtag());
+            response = client.updateResource2(requirementURL, entityBody, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+
+            response.consumeContent();
+
+            return response.getStatusCode();
+
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return 0;
+
+    }
+
     public RequirementCollection getRequirementCollection(String resourceUrl) {
 
         ClientResponse response = null;
@@ -290,7 +430,7 @@ public class DoorsClient {
 
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
 
-            if(response.getStatusCode() == HttpStatus.SC_OK) {
+            if (response.getStatusCode() == HttpStatus.SC_OK) {
                 RequirementCollection collection = response.getEntity(RequirementCollection.class);
                 collection.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
 
@@ -329,10 +469,11 @@ public class DoorsClient {
 
             collection.setInstanceShape(shape.getAbout());
 
-            response = client.createResource(requirementCollectionFactory, collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
+            response = client.createResource(requirementCollectionFactory, collection,
+                            OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML);
             response.consumeContent();
 
-            if(response.getStatusCode() == HttpStatus.SC_CREATED) {
+            if (response.getStatusCode() == HttpStatus.SC_CREATED) {
 
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
 
@@ -371,10 +512,11 @@ public class DoorsClient {
 
             RequirementCollection check = getRequirementCollection(collection.getResourceUrl());
 
-            response = client.updateResource(collection.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            response = client.updateResource(collection.getResourceUrl(), collection, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
             response.consumeContent();
 
-            if(response.getStatusCode() == HttpStatus.SC_OK) {
+            if (response.getStatusCode() == HttpStatus.SC_OK) {
 
                 return collection.getResourceUrl();
 
@@ -416,10 +558,10 @@ public class DoorsClient {
     public Folder[] getFolders(String parentResourceUrl) {
 
         Set<Folder> folders = new HashSet<Folder>();
-        String folderQueryCapability = doorsUrl + "folders";
+        String folderQueryCapability = doorsUrl + "/folders";
         String resourceUrl = parentResourceUrl;
         if (resourceUrl == null) {
-            resourceUrl = doorsUrl + "folders/" + projectId;
+            resourceUrl = doorsUrl + "/folders/" + projectId;
         }
 
         OslcQueryParameters queryParams = new OslcQueryParameters();
@@ -447,6 +589,7 @@ public class DoorsClient {
         return folders.toArray(new Folder[folders.size()]);
     }
 
+
     public String create(Folder folder) {
         ClientResponse response;
 
@@ -463,16 +606,20 @@ public class DoorsClient {
             }
         }
 
-        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><ns:folder xmlns:ns=\"http://com.ibm.rdm/navigation#\" rdf:about=\"\"><ns:title xmlns:ns=\"http://purl.org/dc/terms/\">" + folder.getTitle() + "</ns:title><ns:description xmlns:ns=\"http://purl.org/dc/terms/\">" + folder.getDescription() + "</ns:description><ns:parent rdf:resource=\"" + parentFolder + "\" xmlns:ns=\"http://com.ibm.rdm/navigation#\"/></ns:folder></rdf:RDF>";
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><ns:folder xmlns:ns=\"http://com.ibm.rdm/navigation#\" rdf:about=\"\"><ns:title xmlns:ns=\"http://purl.org/dc/terms/\">"
+                        + folder.getTitle() + "</ns:title><ns:description xmlns:ns=\"http://purl.org/dc/terms/\">"
+                        + folder.getDescription() + "</ns:description><ns:parent rdf:resource=\"" + parentFolder
+                        + "\" xmlns:ns=\"http://com.ibm.rdm/navigation#\"/></ns:folder></rdf:RDF>";
 
         try {
 
             Map<String, String> headers = new HashMap<String, String>();
             headers.put("net.jazz.jfs.owning-context", doorsUrl + "/process/project-areas/" + projectId);
-            response = client.createResource(folderFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, headers);
+            response = client.createResource(folderFactory, xml, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML, headers);
             response.consumeContent();
 
-            if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
+            if (response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
             } else {
                 System.out.println("Response: " + response.getMessage());
@@ -496,16 +643,19 @@ public class DoorsClient {
         ClientResponse response;
         String projectFactory = doorsUrl + "/projects";
 
-        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><jp:project-area xmlns:jp=\"http://jazz.net/xmlns/prod/jazz/process/0.6/\" xmlns:rm=\"http://www.ibm.com/xmlns/rdm/rdf/\" jp:name=\"" + project + "\" jp:templateId=\"" + template + "\" jp:templateLocale=\"en_US\"><jp:summary></jp:summary><jp:description>NewAutoProjectTest</jp:description><rm:spaceName>AUTOGENRATED</rm:spaceName><rm:spaceDescription>testing auto-creation</rm:spaceDescription><rm:componentName>xxx</rm:componentName><rm:componentDescription>NewAutoProject</rm:componentDescription><rm:spaceUri></rm:spaceUri><rm:defaultConfigurationUri></rm:defaultConfigurationUri><jp:visibility jp:access=\"PROJECT_HIERARCHY\"/></jp:project-area>";
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><jp:project-area xmlns:jp=\"http://jazz.net/xmlns/prod/jazz/process/0.6/\" xmlns:rm=\"http://www.ibm.com/xmlns/rdm/rdf/\" jp:name=\""
+                        + project + "\" jp:templateId=\"" + template
+                        + "\" jp:templateLocale=\"en_US\"><jp:summary></jp:summary><jp:description>NewAutoProjectTest</jp:description><rm:spaceName>AUTOGENRATED</rm:spaceName><rm:spaceDescription>testing auto-creation</rm:spaceDescription><rm:componentName>xxx</rm:componentName><rm:componentDescription>NewAutoProject</rm:componentDescription><rm:spaceUri></rm:spaceUri><rm:defaultConfigurationUri></rm:defaultConfigurationUri><jp:visibility jp:access=\"PROJECT_HIERARCHY\"/></jp:project-area>";
 
         try {
 
             Map<String, String> headers = new HashMap<String, String>();
             headers.put("X-Jazz-CSRF-Prevent", JSESSIONID);
-            response = client.createResource(projectFactory, xml, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, headers);
+            response = client.createResource(projectFactory, xml, OslcMediaType.APPLICATION_RDF_XML,
+                            OslcMediaType.APPLICATION_RDF_XML, headers);
             response.consumeContent();
 
-            if(response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
+            if (response.getStatusCode() == HttpStatus.SC_CREATED || response.getStatusCode() == HttpStatus.SC_OK) {
                 return response.getHeaders().getFirst(HttpHeaders.LOCATION);
             } else {
                 System.out.println("Response: " + response.getMessage());
@@ -528,7 +678,7 @@ public class DoorsClient {
             response = client.deleteResource(resourceUrl);
             response.consumeContent();
 
-            if(response.getStatusCode() == HttpStatus.SC_OK) {
+            if (response.getStatusCode() == HttpStatus.SC_OK) {
                 return true;
             }
 
@@ -543,7 +693,7 @@ public class DoorsClient {
     }
 
     public URI getField(String name) {
-        if(projectProperties.isEmpty()) {
+        if (projectProperties.isEmpty()) {
             projectProperties = getFields();
         }
 
@@ -554,7 +704,9 @@ public class DoorsClient {
         Property[] properties;
         try {
 
-            properties = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "Requirement").getProperties();
+            properties = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, requirementArtifactType).getProperties();
+
+
             for (Property property : properties) {
                 projectProperties.put(property.getTitle(), property.getPropertyDefinition());
                 projectPropertiesDetails.put(property.getTitle(), property.getName());
@@ -567,7 +719,6 @@ public class DoorsClient {
         }
         return projectProperties;
     }
-
 
     public static Map<String, String> getQueryMap(String query) {
         Map<String, String> map = new HashMap<String, String>();
@@ -583,12 +734,13 @@ public class DoorsClient {
     }
 
     public ResourceShape getShape(String oslcResourceType, String requiredInstanceShape) throws Exception {
-        return RmUtil.lookupRequirementsInstanceShapes(client.lookupServiceProviderUrl(helper.getCatalogUrl(), project), OSLCConstants.OSLC_RM_V2, oslcResourceType, client, requiredInstanceShape);
+        return RmUtil.lookupRequirementsInstanceShapes(client.lookupServiceProviderUrl(helper.getCatalogUrl(), project),
+                        OSLCConstants.OSLC_RM_V2, oslcResourceType, client, requiredInstanceShape);
     }
 
     private OslcQueryResult getQuery(Map<String, String> params) {
 
-        if(projectPropertiesDetails.isEmpty()) {
+        if (projectPropertiesDetails.isEmpty()) {
             getFields();
         }
 
@@ -604,7 +756,8 @@ public class DoorsClient {
             if (it.hasNext()) {
                 Entry<String, String> pair = it.next();
                 prefix = "rm_property=<" + doorsUrl + "/types/>";
-                where = String.format("rm_property:%s=\"%s\"", projectPropertiesDetails.get((String) pair.getValue()), (String) pair.getKey());
+                where = String.format("rm_property:%s=\"%s\"", projectPropertiesDetails.get((String) pair.getValue()),
+                                (String) pair.getKey());
             }
         }
 
@@ -630,7 +783,7 @@ public class DoorsClient {
 
                     response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
 
-                    if(response.getStatusCode() == HttpStatus.SC_OK) {
+                    if (response.getStatusCode() == HttpStatus.SC_OK) {
                         Requirement res = response.getEntity(Requirement.class);
                         res.setResourceUrl(resultsUrl);
                         res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
@@ -651,7 +804,7 @@ public class DoorsClient {
                 break;
             }
 
-        } while(true);
+        } while (true);
 
         return req.toArray(new Requirement[req.size()]);
 
@@ -691,11 +844,17 @@ public class DoorsClient {
             String[] serviceProviderPath = serviceProvider.getPath().split("/");
 
             projectId = serviceProviderPath[serviceProviderPath.length - 2];
-            queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE);
-            requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE), "UTF-8");
-            requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl, OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE), "UTF-8");
-            rootFolder = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/" + projectId;
-            folderFactory = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/jts/process/project-areas/" + projectId;
+            queryCapability = client.lookupQueryCapability(serviceProviderUrl, OSLCConstants.OSLC_RM_V2,
+                            OSLCConstants.RM_REQUIREMENT_TYPE);
+            requirementFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl,
+                            OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_TYPE), "UTF-8");
+            requirementCollectionFactory = URLDecoder.decode(client.lookupCreationFactory(serviceProviderUrl,
+                            OSLCConstants.OSLC_RM_V2, OSLCConstants.RM_REQUIREMENT_COLLECTION_TYPE), "UTF-8");
+            rootFolder = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority() + "/rm/folders/"
+                            + projectId;
+            folderFactory = serviceProvider.getScheme() + "://" + serviceProvider.getAuthority()
+                            + "/rm/folders/?projectUrl=" + serviceProvider.getScheme() + "://"
+                            + serviceProvider.getAuthority() + "/jts/process/project-areas/" + projectId;
 
         } catch (Exception e) {
 
@@ -704,7 +863,8 @@ public class DoorsClient {
         }
     }
 
-    private static void validateTokens(DoorsOAuthClient client, OAuthRedirectException oauthE, String consumerKey, String consumerSecret, String user, String password, String authURL) throws Exception {
+    private static void validateTokens(DoorsOAuthClient client, OAuthRedirectException oauthE, String consumerKey,
+                    String consumerSecret, String user, String password, String authURL) throws Exception {
 
         String requestToken = oauthE.getAccessor().requestToken;
         String tokenSecret = oauthE.getAccessor().tokenSecret;
@@ -743,7 +903,7 @@ public class DoorsClient {
         HttpPost formPost2 = new HttpPost(authURL + "/j_security_check");
         formPost2.getParams().setParameter("oauth_token", requestToken);
         formPost2.getParams().setParameter("authorize", "true");
-        formPost2.addHeader("Content-Type","application/x-www-form-urlencoded;charset=UTF-8");
+        formPost2.addHeader("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
         HttpResponse formResponse2 = client.getHttpClient().execute(formPost2);
         EntityUtils.consume(formResponse2.getEntity());
 
@@ -754,30 +914,502 @@ public class DoorsClient {
     }
 
     /***
-     * DoorsStereotypeProfileGenerator utility class will process the input stream
-     * of artifact types and attributes returned by this method
+     * Author: Bruce Meeks Jr
+     * 
+     * @param project name
+     * @return all artifacts and owned attributes for the specified project
      */
     public InputStream getAllArtifactTypes(String project) throws Exception {
 
-        HttpGet httpget = new HttpGet(doorsUrl+"publish/resources?projectName=" + project);
+        HttpGet httpget = new HttpGet(doorsUrl + "/publish/resources?projectName=" + project);
         InputStream artifactTypes = null;
         httpget.setHeader("Accept", "application/xml");
-        httpget.setHeader("X-Jazz-CSRF-Prevent",JSESSIONID);
+        httpget.setHeader("X-Jazz-CSRF-Prevent", JSESSIONID);
 
-       try {
+        try {
 
-           HttpResponse response = client.getHttpClient().execute(httpget);
+            HttpResponse response = client.getHttpClient().execute(httpget);
 
-           artifactTypes = response.getEntity().getContent();
+            artifactTypes = response.getEntity().getContent();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return artifactTypes;
+
+    }
+
+    /***
+     * Author: Bruce Meeks Jr
+     * 
+     * @param project name
+     * @return true/false is project exists in DNG
+     */
+    public boolean doesProjectExists(String project) {
+
+        HttpGet httpget = new HttpGet(doorsUrl + "/process/project-areas");
+        InputStream projects = null;
+        httpget.setHeader("Accept", "application/xml");
+        httpget.setHeader("X-Jazz-CSRF-Prevent", JSESSIONID);
+
+        try {
+
+            HttpResponse response = client.getHttpClient().execute(httpget);
+
+            projects = response.getEntity().getContent();
+
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projects);
+
+            NodeList projectNodes = doc.getElementsByTagName("jp06:project-area");
+
+            Node curProjectAreaNode = null;
+            Attr curProjectNodeAttribute = null;
+
+            for (int pn = 0; pn < projectNodes.getLength(); pn++) {
+
+                curProjectAreaNode = projectNodes.item(pn);
+
+                for (int pna = 0; pna < curProjectAreaNode.getAttributes().getLength(); pna++) {
+
+                    curProjectNodeAttribute = (Attr) curProjectAreaNode.getAttributes().item(pna);
+
+                    if (curProjectNodeAttribute.getValue().equals(project)) {
+                        return true;
+
+                    }
+
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+
+    }
+
+    /***
+     * Author: Bruce Meeks Jr
+     *
+     * @param artifactType
+     * @return true/false is artifact type user has specified, exist in DNG
+     * @throws Exception
+     */
+    public boolean doesArtifactTypeExist(String artifactType) throws Exception {
+
+        try {
+            if (artifactType != null) {
+
+                getShape(OSLCConstants.RM_REQUIREMENT_TYPE, artifactType);
+                return true;
+            } else {
+                return false;
+            }
+        } catch (ResourceNotFoundException e) {
+            return false;
+        }
+    }
+
+    /***
+     * Author: Bruce Meeks Jr
+     *
+     * @param artifactType
+     * @param sysmlId
+     * @return true/false if sysmlid has been created for a specific artifact type
+     * @throws Exception
+     */
+    public boolean doesSysmlIdExist(String artifactType, String sysmlid) throws Exception {
+
+        Property[] properties;
+
+        try {
+
+            properties = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, artifactType).getProperties();
+
+            for (Property property : properties) {
+
+                if (property.getTitle() != null) {
+                    if (property.getTitle().equals(sysmlid)) {
+                        return true;
+                    }
+                }
+
+            }
+
+        } catch (ResourceNotFoundException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+
+    }
 
 
-       }  catch (IOException e) {
-           e.printStackTrace();
-       }
+    /***
+     * Author: Bruce Meeks Jr
+     *
+     * @param artifactType
+     * @param attribute
+     * @return true/false if specified attribute has been created in DNG for the specified artifact
+     *         type
+     * @throws Exception
+     */
+    public boolean doesAttributeExist(String artifactType, String attribute) throws Exception {
 
-       return artifactTypes;
+        Property[] properties;
 
-   }
+        try {
+
+            properties = getShape(OSLCConstants.RM_REQUIREMENT_TYPE, artifactType).getProperties();
+
+            for (Property property : properties) {
+
+                if (property.getTitle() != null) {
+                    if (property.getTitle().equals(attribute)) {
+                        return true;
+                    }
+                }
+
+            }
 
 
+        } catch (ResourceNotFoundException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+
+    }
+
+    public void addCustomLinkToExistingRequirement(String sourceRequirementURL, String targetRequirementURL,
+                    String customLinkURL) {
+
+        // first do a GET to check if source requirement exists, and also to get its RDF
+        // representation
+        String srcReqAsRDF = getRequirementAsRDF(sourceRequirementURL);
+        String targetReqAsRDF = getRequirementAsRDF(targetRequirementURL);
+
+        if (srcReqAsRDF == null) {
+            System.err.println("Source Resource does not exist and cannot be updated: " + sourceRequirementURL);
+            return;
+        }
+        if (targetReqAsRDF == null) {
+            System.err.println("target Resource does not exist: " + targetRequirementURL);
+            return;
+        }
+
+        // parse the RDF representation of the resource as RDF model
+        InputStream is = new ByteArrayInputStream(srcReqAsRDF.getBytes());
+        Model rdfModel = ModelFactory.createDefaultModel();
+        rdfModel.read(is, sourceRequirementURL);
+
+        // print RDF model to console for verification
+        // OutputStream outputStream = new ByteArrayOutputStream();
+        // rdfModel.write(outputStream);
+        // String content = outputStream.toString();
+        // System.out.println(content);
+
+        // set up RDF resources
+        Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
+        Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
+        com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
+
+        // check if the requirement already has custom link value(s)
+        // if yes, delete them
+        // sourceRequirementResource.removeAll(customLinkProperty);
+
+        // add the triple describing the new custom link value
+        sourceRequirementResource.addProperty(customLinkProperty, targetRequirementResource);
+
+        // transform RDF model describing requirement into RDF
+        OutputStream outputStream2 = new ByteArrayOutputStream();
+        rdfModel.write(outputStream2);
+        String updatedSrcReqAsRDF = outputStream2.toString();
+
+        // perform the update
+        int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
+        System.out.println("Update statusCode:" + statusCode);
+    }
+
+    /***
+     * Author: Bruce Meeks Jr Description: Returns the name of a Requirement's artifact type using
+     * its id from the instance shape
+     * 
+     * @param requirement
+     * @return artifactType
+     */
+    public String getArtifactType(Requirement requirement, String project) {
+
+        String artifactType = "Requirement";
+
+        String artifactTypeId = requirement.getInstanceShape().getPath().substring(
+                        (requirement.getInstanceShape().getPath().lastIndexOf('/') + 1),
+                        requirement.getInstanceShape().getPath().length());
+
+        try {
+
+            InputStream projectArtifactTypes = getAllArtifactTypes(project);
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projectArtifactTypes);
+
+            NodeList artifactTypes = doc.getElementsByTagName("attribute:objectType");
+            Node curArtifactType = null;
+            Attr curArtifactTypeNodeAttribute = null;
+
+            for (int at = 0; at < artifactTypes.getLength(); at++) {
+
+                curArtifactType = artifactTypes.item(at);
+
+                // iterating through all artifact types and their ids
+                for (int ata = 0; ata < curArtifactType.getAttributes().getLength(); ata++) {
+
+                    curArtifactTypeNodeAttribute = (Attr) curArtifactType.getAttributes().item(ata);
+
+                    if (!curArtifactTypeNodeAttribute.getName().equals("attribute:itemId")) {
+                        continue;
+
+                    } else {
+                        // when matching artifact type id is found, return its name
+                        if (curArtifactTypeNodeAttribute.getValue().equals(artifactTypeId)) {
+                            curArtifactTypeNodeAttribute = (Attr) curArtifactType.getAttributes().item(ata + 1);
+                            return curArtifactTypeNodeAttribute.getValue();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return artifactType;
+
+    }
+
+    /***
+     * Author: Bruce Meeks Jr Description: This method will determine if a specific artifact has any
+     * link relationships in its DNG project
+     * 
+     * @param resourceURL
+     * @param project
+     * @return number of links found
+     */
+    public int artifactHasLinks(String resourceURL, String project) {
+
+
+        String resourceID = resourceURL.substring(resourceURL.lastIndexOf('/') + 1);
+
+        try {
+
+            InputStream projectArtifactTypes = getAllArtifactTypes(project);
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projectArtifactTypes);
+
+            NodeList artifactTypes = doc.getElementsByTagName("ds:artifact");
+
+            Node curArtifactNode = null;
+            NodeList curArtifactChildNodes = null;
+            Node curArtifactChildNode = null;
+            NamedNodeMap curArtifactAttributes = null;
+
+            boolean artifactFound = false;
+
+            for (int x = 0; x < artifactTypes.getLength(); x++) {
+
+                curArtifactNode = artifactTypes.item(x);
+                curArtifactAttributes = curArtifactNode.getAttributes();
+
+                for (int s = 0; s < curArtifactAttributes.getLength(); s++) {
+
+                    if (curArtifactAttributes.item(s).getNodeName().equals("attribute:itemId")) {
+
+                        if (curArtifactAttributes.item(s).getNodeValue().equals(resourceID)) {
+                            artifactFound = true;
+                        } else {
+                            break;
+                        }
+
+                    }
+
+
+                }
+
+                // if artifact found, check for links
+                if (artifactFound) {
+
+                    curArtifactChildNodes = curArtifactNode.getChildNodes();
+
+                    for (int q = 0; q < curArtifactChildNodes.getLength(); q++) {
+
+                        curArtifactChildNode = curArtifactChildNodes.item(q);
+
+                        if (curArtifactChildNode.getNodeName().equals("ds:traceability")) {
+
+                            return curArtifactChildNode.getFirstChild().getChildNodes().getLength();
+
+                        }
+                    }
+
+                    return 0;
+
+                } else {
+                    continue;
+                }
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+
+    }
+
+    /***
+     * Author: Bruce Meeks Jr
+     * 
+     * Description: This method returns a data structure encapsulating all different types of link
+     * relationships between the specified source artifact and its target artifact counterpart
+     *
+     * @param sourceResourceURL
+     * @param project
+     * @return HashMap of link relationships
+     */
+    public HashMap<String, HashMap<String, ArrayList<String>>> getArtifactLinks(String sourceResourceURL,
+                    String project) {
+
+        HashMap<String, HashMap<String, ArrayList<String>>> curArtifactLinkRelationships =
+                        new HashMap<String, HashMap<String, ArrayList<String>>>();
+
+        String resourceID = sourceResourceURL.substring(sourceResourceURL.lastIndexOf('/') + 1);
+
+        try {
+
+            InputStream projectArtifactTypes = getAllArtifactTypes(project);
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document doc = db.parse(projectArtifactTypes);
+
+            NodeList artifactTypes = doc.getElementsByTagName("ds:artifact");
+
+            Node curArtifactNode = null;
+            NodeList curArtifactChildNodes = null;
+            Node curArtifactChildNode = null;
+            NamedNodeMap curArtifactAttributes = null;
+            Node curLinkNode = null;
+
+            String curLinkLabel = "";
+            String curTargetURL = "";
+            HashMap<String, ArrayList<String>> linkRelationships = new HashMap<String, ArrayList<String>>();
+
+            for (int x = 0; x < artifactTypes.getLength(); x++) {
+
+                curArtifactNode = artifactTypes.item(x);
+                curArtifactAttributes = curArtifactNode.getAttributes();
+
+                for (int s = 0; s < curArtifactAttributes.getLength(); s++) {
+
+                    if (curArtifactAttributes.item(s).getNodeName().equals("attribute:itemId")) {
+
+                        if (curArtifactAttributes.item(s).getNodeValue().equals(resourceID)) {
+
+                            curArtifactChildNodes = curArtifactNode.getChildNodes();
+
+                            for (int q = 0; q < curArtifactChildNodes.getLength(); q++) {
+
+                                curArtifactChildNode = curArtifactChildNodes.item(q);
+
+                                // if artifact resource has traceability properties then it has link
+                                // relationships in DNG
+                                if (curArtifactChildNode.getNodeName().equals("ds:traceability")) {
+
+                                    linkRelationships = new HashMap<String, ArrayList<String>>();
+
+                                    int traceChilds = curArtifactChildNode.getChildNodes().getLength();
+
+                                    for (int f = 0; f < traceChilds; f++) {
+
+                                        curArtifactChildNode = curArtifactChildNode.getChildNodes().item(f);
+
+                                        int linkNum = curArtifactChildNode.getChildNodes().getLength();
+
+                                        // processing each link relationship found for specified
+                                        // artifact
+                                        for (int a = 0; a < linkNum; a++) {
+
+                                            curLinkNode = curArtifactChildNode.getChildNodes().item(a);
+
+                                            int linkNodeChildren = curLinkNode.getChildNodes().getLength();
+
+                                            // find and store each distinguishing Link Label and the
+                                            // target artifact's URL
+                                            for (int c = 0; c < linkNodeChildren; c++) {
+
+                                                if (curLinkNode.getChildNodes().item(c).getNodeName()
+                                                                .equals("rrm:title")) {
+
+                                                    curLinkLabel = curLinkNode.getChildNodes().item(c).getTextContent();
+
+                                                    continue;
+                                                }
+
+                                                if (curLinkNode.getChildNodes().item(c).getNodeName()
+                                                                .equals("rrm:relation")) {
+
+                                                    curTargetURL = curLinkNode.getChildNodes().item(c).getTextContent();
+
+                                                    if (linkRelationships.containsKey(curLinkLabel)) {
+
+                                                        linkRelationships.get(curLinkLabel).add(curTargetURL);
+
+                                                    } else {
+                                                        linkRelationships.put(curLinkLabel, new ArrayList<String>());
+                                                        linkRelationships.get(curLinkLabel).add(curTargetURL);
+
+                                                    }
+
+                                                    break;
+
+                                                }
+
+                                            } // cur Link Node
+
+                                        }
+
+
+                                    }
+
+                                }
+                            }
+
+                            curArtifactLinkRelationships.put(sourceResourceURL, linkRelationships);
+
+
+                        } else {
+                            break;
+                        }
+
+                    }
+
+                }
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return curArtifactLinkRelationships;
+
+    }
 }

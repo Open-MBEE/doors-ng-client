@@ -1,7 +1,9 @@
 package gov.nasa.jpl.mbee.doorsng.model;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -9,8 +11,15 @@ import java.util.TreeSet;
 import javax.xml.namespace.QName;
 
 import org.eclipse.lyo.client.oslc.resources.RmConstants;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcDescription;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcName;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcNamespace;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcPropertyDefinition;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcRange;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcReadOnly;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcResourceShape;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcTitle;
+import org.eclipse.lyo.oslc4j.core.model.Link;
 
 @OslcNamespace(RmConstants.REQUIREMENTS_MANAGEMENT_NAMESPACE)
 @OslcResourceShape(title = "Requirement Resource Shape", describes = RmConstants.TYPE_REQUIREMENT)
@@ -103,5 +112,6 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
         String url = uri.toString().replace(last, "");
         return new QName(url, last);
     }
-
+  
+   
 }
