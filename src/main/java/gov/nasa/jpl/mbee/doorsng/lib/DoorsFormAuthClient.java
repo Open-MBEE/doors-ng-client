@@ -1,10 +1,6 @@
 package gov.nasa.jpl.mbee.doorsng.lib;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URISyntaxException;
 
 import javax.ws.rs.core.Response.Status;
@@ -24,11 +20,6 @@ import org.apache.wink.client.RestClient;
 import org.eclipse.lyo.client.exception.JazzAuthErrorException;
 import org.eclipse.lyo.client.exception.JazzAuthFailedException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
-
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.Property;
-import com.hp.hpl.jena.rdf.model.Resource;
 
 import net.oauth.OAuthException;
 
@@ -242,9 +233,8 @@ public class DoorsFormAuthClient extends DoorsOslcClient {
             retval = header.getValue();
         return retval;
     }
-    
-    public ClientResponse updateResource2(String url, final String entityBody, String mediaType, String acceptType, String ifMatch) throws IOException, OAuthException, URISyntaxException {
 
+    public ClientResponse updateDoorsResource(String url, final String entityBody, String mediaType, String acceptType, String ifMatch) throws IOException, OAuthException, URISyntaxException {
 		ClientResponse response = null;
 		RestClient restClient = new RestClient(getClientConfig());
 		boolean redirect = false;
@@ -265,15 +255,13 @@ public class DoorsFormAuthClient extends DoorsOslcClient {
 		return response;
 	}
     
-    public ClientResponse createResource2(String url, final String entityBody, String mediaType, String acceptType) throws IOException, OAuthException, URISyntaxException {
+    public ClientResponse createDoorsResource(String url, final String entityBody, String mediaType, String acceptType) throws IOException, OAuthException, URISyntaxException {
 
 		ClientResponse response = null;
 		RestClient restClient = new RestClient(getClientConfig());
 		boolean redirect = false;
 
 		do {
-//			response = restClient.resource(url).contentType(mediaType).accept(acceptType).header(OSLCConstants.OSLC_CORE_VERSION,"2.0").post(artifact);
-			
 			response = restClient.resource(url).contentType(mediaType).accept(acceptType).header(OSLCConstants.OSLC_CORE_VERSION,"2.0").post(ClientResponse.class, entityBody);
 
 			if (response.getStatusType().getFamily() == Status.Family.REDIRECTION) {
