@@ -38,8 +38,6 @@ public class TraceTreeExport {
     private static String pass;
 
     public static void main(String[] args) throws ParseException {
-        Console console = System.console();
-        pass = new String(console.readPassword("Password: "));
 
         Options options = new Options();
 
@@ -47,6 +45,7 @@ public class TraceTreeExport {
         options.addOption("url", true, "doors url");
         options.addOption("project", true, "project area");
         options.addOption("stdout", true, "print to stdout");
+        options.addOption("pass", true, "Use stdin instead");
 
         CommandLineParser cliParser = new GnuParser();
 
@@ -56,6 +55,16 @@ public class TraceTreeExport {
         String url = cmd.getOptionValue("url");
         String project = cmd.getOptionValue("project");
         String stdout = cmd.getOptionValue("stdout", "false");
+
+        String envPass = System.getenv("DNG_PASSWORD");
+        pass = cmd.getOptionValue("pass", "");
+
+        if (pass.isEmpty() && (envPass == null || envPass.isEmpty())) {
+            Console console = System.console();
+            pass = new String(console.readPassword("Password: "));
+        } else if (pass.isEmpty()) {
+            pass = envPass;
+        }
 
         try {
 
