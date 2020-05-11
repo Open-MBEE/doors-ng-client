@@ -45,6 +45,7 @@ import org.eclipse.lyo.client.oslc.resources.OslcQuery;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryResult;
 import org.eclipse.lyo.client.oslc.resources.RmUtil;
+import org.eclipse.lyo.oslc4j.core.model.AbstractResource;
 import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
 import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
@@ -193,6 +194,11 @@ public class DoorsClient {
 
     public String getProject() {
         return client.getProject();
+    }
+
+    public <T extends AbstractResource> T getResource(Class<T> type, URI resourceUrl) {
+        ClientResponse response = getResponse(resourceUrl.toString());
+        return response.getStatusCode() == HttpStatus.SC_OK ? response.getEntity(type) : null;
     }
 
     public Requirement getRequirement(String resourceUrl) {

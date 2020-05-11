@@ -8,11 +8,14 @@ import java.io.BufferedWriter;
 import java.io.Console;
 import java.io.FileWriter;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,8 +29,10 @@ import org.apache.wink.client.ClientResponse;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryResult;
+import org.eclipse.lyo.oslc4j.core.model.AbstractResource;
 import org.eclipse.lyo.oslc4j.core.model.Link;
 import org.eclipse.lyo.oslc4j.core.model.Property;
+import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 import org.json.JSONArray;
 
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
@@ -36,6 +41,8 @@ public class TraceTreeExport {
 
     private static final Logger logger = Logger.getLogger(TraceTreeEuropaConfig.class.getName());
     private static String pass;
+    private static Map<String, Requirement> requirementCache = new HashMap<>();
+    private static Map<URI, ResourceShape> resourceShapeCache = new HashMap<>();
 
     public static void main(String[] args) throws ParseException {
 
@@ -70,8 +77,6 @@ public class TraceTreeExport {
 
             DoorsClient doors = new DoorsClient(user, pass, url, project);
             doors.setProject(project);
-            Property[] viproperties = doors.getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "Requirement").getProperties();
-            //Property[] vnvproperties = doors.getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "V&V Activity").getProperties();
 
             TraceTreeConfig ttpc = null;
             if (project.equals("Europa")) {
@@ -83,31 +88,29 @@ public class TraceTreeExport {
             Map<String, List<Map<String, Object>>> reqs = new HashMap<>();
             reqs.put("va", new ArrayList<>());
             reqs.put("vi", new ArrayList<>());
-            for (String vnvactivity : ttpc.getVATypes()) {
-                List<Map<String, Object>> vnvs = getReqs(vnvactivity, doors, viproperties);
-                for (Map<String, Object> vnv : vnvs) {
-                    for (Map.Entry<String, Object> entry : vnv.entrySet()) {
-                        System.out.println(entry.getKey() + ":" + entry.getValue().toString());
-                    }
-                    reqs.get("va").add(vnv);
-                }
+            Map<String, String> vaTypes = ttpc.getVATypes();
+            for (String key : vaTypes.keySet()) {
+                Property[] properties = doors.getShape(OSLCConstants.RM_REQUIREMENT_TYPE, key).getProperties();
+                List<Map<String, Object>> vnvs = getTTReqs(vaTypes.get(key), doors, properties);
+                reqs.get("va").addAll(vnvs);
             }
 
-            long now = new Date().getTime();
-            String vaFilename = project + "_va-" + now;
+            Date today = new Date();
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+            String vaFilename = project + "_va_" + formatter.format(today);
 
             JSONArray va = new JSONArray(reqs.get("va"));
             saveFile(vaFilename + ".json", va.toString(4));
             saveFile(vaFilename + ".csv", toCSV(reqs.get("va")));
 
-            for (String viurl : ttpc.getVITypes()) {
-                List<Map<String, Object>> vis = getReqs(viurl, doors, viproperties);
-                for (Map<String, Object> vnv : vis) {
-                    reqs.get("vi").add(vnv);
-                }
+            Map<String, String> viTypes = ttpc.getVITypes();
+            for (String key : viTypes.keySet()) {
+                Property[] properties = doors.getShape(OSLCConstants.RM_REQUIREMENT_TYPE, key).getProperties();
+                List<Map<String, Object>> vis = getTTReqs(viTypes.get(key), doors, properties);
+                reqs.get("vi").addAll(vis);
             }
 
-            String viFilename = project + "_vi-" + now;
+            String viFilename = project + "_vi_" + formatter.format(today);
 
             JSONArray vi = new JSONArray(reqs.get("vi"));
             saveFile(viFilename + ".json", vi.toString(4));
@@ -127,6 +130,90 @@ public class TraceTreeExport {
 
     }
 
+    public static List<Map<String, Object>> getTTReqs(String type, DoorsClient doors, Property[] properties) {
+        OslcQueryParameters queryParams = new OslcQueryParameters();
+        String prefix = "rm=<http://www.ibm.com/xmlns/rdm/rdf/>";
+        String where = String.format("rm:ofType=<%s>", type);
+
+        queryParams.setPrefix(prefix);
+        queryParams.setWhere(where);
+        OslcQueryResult results = doors.submitQuery(queryParams);
+
+        List<Map<String, Object>> reqs = new ArrayList<>();
+        for (String resultsUrl : results.getMembersUrls()) {
+            Requirement current;
+            if (requirementCache.get(resultsUrl) == null) {
+                current = doors.getRequirement(resultsUrl);
+            } else {
+                current = requirementCache.get(resultsUrl);
+            }
+            Map<String, Object> res = new HashMap<>();
+
+            //VI id,Name,Primary Text,Artifact Type,Owner [S],Rationale [S],Owning System,Notes/Additional Info [REQ],State (Requirement Workflow),VAC,VnV Method [V],VnV Approach [V],Link:Parent Of (<),Link:Child Of (>),Last Modified By,Last Modified Date,Level,Link:Verified or Validated By (<)
+            //VA id,Name,Artifact Type,Last Modified By,Last Modified Date,Schedule Start Date [V],Scheduled Completion Date [V],Actual Start Date [V],Actual Completion Date [V],VAC,Link:Verifies or Validates (>),Verif at another level? [V],VA Owner,Venue for R4R [V],Description
+
+            res.put("id", current.getIdentifier());
+            res.put("Name", current.getTitle());
+
+            res.put("Primary Text", current.getPrimaryText());
+            res.put("Created", current.getCreated());
+
+            ResourceShape resourceShape;
+            if (resourceShapeCache.get(current.getInstanceShape()) == null) {
+                resourceShape = doors
+                    .getResource(ResourceShape.class, current.getInstanceShape());
+            } else {
+                resourceShape = resourceShapeCache.get(current.getInstanceShape());
+            }
+
+            res.put("Artifact Type", resourceShape.getTitle());
+            List<String> creatorList = new ArrayList<>();
+            for (URI creator : current.getCreators()) {
+                ClientResponse clientResponse = doors.getResponse(creator.toString());
+                Person creatorPerson = clientResponse.getEntity(Person.class);
+                creatorList.add(creatorPerson.getName());
+            }
+            res.put("Last Modified On", current.getModified());
+            res.put("Created By", creatorList);
+            res.put("Verified or Validated By (<)", current.getValidatedBy());
+            res.put("Affected By", linkToList(current.getAffectedBy()));
+            res.put("Description", current.getDescription());
+            Map<String, URI> propertyMap = createPropertyMap(properties);
+            for (Property property : properties) {
+                if (property.getTitle() != null) {
+                    String value = current.getCustomField(property.getPropertyDefinition());
+                    switch (property.getTitle()) {
+                        case "Child Of":
+                            res.put("Link:Child Of (>)", processLink(value, doors, propertyMap));
+                            break;
+                        case "Verified or Validated By":
+                            res.put("Verified or Validated By (<)", processLink(value, doors, propertyMap));
+                            break;
+                        case "Parent Of":
+                            res.put("Link:Parent Of (<)", processLink(value, doors, propertyMap));
+                            break;
+                        case "Owning System":
+                            try {
+                                ResourceShape rs = doors.getResource(ResourceShape.class, new URI(value));
+                                System.out.println(rs.getTitle() + " " + rs.);
+                                res.put("Owning System",
+                                    getKeyByValue(propertyMap, new URI(value)));
+                            } catch (URISyntaxException ue) {
+                                //Do Nothing
+                            }
+                            break;
+                        default:
+                            res.put(property.getTitle(), value != null ? value : "");
+                            break;
+                    }
+                }
+            }
+            reqs.add(res);
+        }
+
+        return reqs;
+    }
+
     private static List<Map<String, Object>> getReqs(String type, DoorsClient doors, Property[] properties) {
         OslcQueryParameters queryParams = new OslcQueryParameters();
         String prefix = "rm=<http://www.ibm.com/xmlns/rdm/rdf/>";
@@ -135,34 +222,60 @@ public class TraceTreeExport {
         queryParams.setPrefix(prefix);
         queryParams.setWhere(where);
         OslcQueryResult results = doors.submitQuery(queryParams);
-        //System.out.println(results.toString());
 
         List<Map<String, Object>> reqs = new ArrayList<>();
         for (String resultsUrl : results.getMembersUrls()) {
-            Requirement current = doors.getRequirement(resultsUrl);
+            Requirement current;
+            if (requirementCache.get(resultsUrl) == null) {
+                current = doors.getRequirement(resultsUrl);
+            } else {
+                current = requirementCache.get(resultsUrl);
+            }
             Map<String, Object> res = new HashMap<>();
-            res.put("dngID", current.getIdentifier());
-            res.put("title", current.getTitle());
+            res.put("id", current.getIdentifier());
+            res.put("Name", current.getTitle());
 
-            res.put("primaryText", current.getPrimaryText());
-            res.put("created", current.getCreated());
-            res.put("artifactType", current.getInstanceShape());
+            res.put("Primary Text", current.getPrimaryText());
+            res.put("Created", current.getCreated());
+
+            ResourceShape resourceShape;
+            if (resourceShapeCache.get(current.getInstanceShape()) == null) {
+                resourceShape = doors
+                    .getResource(ResourceShape.class, current.getInstanceShape());
+            } else {
+                resourceShape = resourceShapeCache.get(current.getInstanceShape());
+            }
+
+            res.put("Artifact Type", resourceShape.getTitle());
             List<String> creatorList = new ArrayList<>();
             for (URI creator : current.getCreators()) {
                 ClientResponse clientResponse = doors.getResponse(creator.toString());
                 Person creatorPerson = clientResponse.getEntity(Person.class);
                 creatorList.add(creatorPerson.getName());
             }
-            res.put("creators", creatorList);
-            res.put("validatedBy", linkToList(current.getValidatedBy()));
-            res.put("affectedBy", linkToList(current.getAffectedBy()));
-            res.put("description", current.getDescription());
-            //res.put("etag", current.getEtag());
-            //res.put("resourceUrl", current.getResourceUrl());
+            res.put("Last Modified On", current.getModified());
+            res.put("Created By", creatorList);
+            res.put("Validated By", linkToList(current.getValidatedBy()));
+            res.put("Affected By", linkToList(current.getAffectedBy()));
+            res.put("Description", current.getDescription());
+            Map<String, URI> propertyMap = createPropertyMap(properties);
             for (Property property : properties) {
-                String value = current.getCustomField(property.getPropertyDefinition());
-                if (value != null) {
-                    res.put(property.getTitle(), value);
+                if (property.getTitle() != null) {
+                    String value = current.getCustomField(property.getPropertyDefinition());
+                    switch (property.getTitle()) {
+                        case "Child Of":
+                            res.put("Link:Child Of (>)", processLink(value, doors, propertyMap));
+                            break;
+                        case "Verified or Validated By":
+                            res.put("Verified or Validated By (<)", processLink(value, doors, propertyMap));
+                            break;
+                        case "Parent Of":
+                            res.put("Link:Parent Of (<)", processLink(value, doors, propertyMap));
+                            break;
+                        default:
+                            res.put(property.getTitle(), value != null ? value : "");
+                            break;
+                    }
                 }
             }
             reqs.add(res);
@@ -189,94 +302,74 @@ public class TraceTreeExport {
         return result;
     }
 
+    private static String processLink(String value, DoorsClient doors, Map<String, URI> propertyMap) {
+        StringBuilder sb = new StringBuilder();
+        if (value != null) {
+            value =
+                value.startsWith("[") ? value.substring(1, value.length() - 1) : value;
+            String[] values = value.split(",");
+            for (String val : values) {
+                Requirement child = new Requirement();
+                String sanitized = val.replaceAll("[\\n\\t ]", "");
+                if (requirementCache.get(sanitized) == null) {
+                    requirementCache.put(sanitized, doors.getRequirement(sanitized));
+                    child = requirementCache.get(sanitized);
+                } else {
+                    child = requirementCache.get(sanitized);
+                }
+                sb.append(requirementToString(child, propertyMap));
+                sb.append(String.format("%n"));
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String requirementToString(Requirement requirement, Map<String, URI> propertyMap) {
+        return String.format("%1$s: %2$s {LINK id=%1$s uri=%3$s}",
+            requirement.getIdentifier(),
+            requirement.getTitle(), requirement.getResourceUrl());
+    }
+
+    private static Map<String, URI> createPropertyMap(Property[] properties) {
+        HashMap<String, URI> propertyMap = new HashMap<>();
+        for (Property property : properties) {
+            //System.out.println(property.getTitle() + "\n" + property.getName() + "\n" + property.getPropertyDefinition() + "\n\n\n");
+            if (property.getTitle() != null) {
+                propertyMap.put(property.getTitle(), property.getPropertyDefinition());
+            }
+        }
+        return propertyMap;
+    }
+
+    public static <T, E> T getKeyByValue(Map<T, E> map, E value) {
+        for (Map.Entry<T, E> entry : map.entrySet()) {
+            if (Objects.equals(value, entry.getValue())) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
     private static String toCSV(List<Map<String, Object>> list) {
         List<String> headers = list.stream().flatMap(map -> map.keySet().stream()).distinct().collect(toList());
         final StringBuffer sb = new StringBuffer();
         sb.append("\"");
         for (int i = 0; i < headers.size(); i++) {
             sb.append(sanitize(headers.get(i)));
-            sb.append(i == headers.size()-1 ? "\"\n" : "\",\"");
+            sb.append(i == headers.size() - 1 ? "\"\n" : "\",\"");
         }
         for (Map<String, Object> map : list) {
+            sb.append("\"");
             for (int i = 0; i < headers.size(); i++) {
                 sb.append(sanitize(map.get(headers.get(i))));
-                sb.append(i == headers.size()-1 ? "\"\n" : "\",\"");
+                sb.append(i == headers.size() - 1 ? "\"\n" : "\",\"");
             }
         }
         return sb.toString();
     }
 
     private static String sanitize(Object string) {
-        return string !=null ? string.toString().replaceAll("\"","\\\\\"") : "";
-    }
-
-    private void test() {
-        //String requirement = "https://cae-jazz-uat.jpl.nasa.gov/rm/resources/_AWOagaeVEeeg0YllPTHinw";
-        //String requirement = "https://cae-jazz-uat.jpl.nasa.gov/rm/resources/CA_ebd86a8744fc431184509866b6267fdc";
-        //String requirement = "https://cae-jazz-uat.jpl.nasa.gov/rm/resources/_gB5pQQvfEemDEcTe-T3Suw";
-        //Requirement req = doors.getRequirement(requirement);
-        //URI type = req.getInstanceShape();
-        //System.out.println(types.toString());
-        //ClientResponse rawClientResponse = doors.getResponse(type.toString());
-        //System.out.println(rawClientResponse.getEntity(String.class));
-
-                /*
-    ECR Pending [DNG-Renamed-1]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_bmmY0dSkEemFdPAMXlyYog
-Audit Date [V]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_vMsxwVH1EeeZqqBXHGi26w
-Tracked Contributor
-http://purl.org/dc/terms/contributor
-Implementing Systems
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_k0KmEdbbEeeiatyn-Hc-EA
-ForeignModifiedOn
-http://jazz.net/ns/rm/dng/attribute#masterForeignModifiedOn
-Modifies
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_xCFmEVH1EeeZqqBXHGi26w
-Rationale [S] [DNG-Renamed-1]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_blF88dSkEemFdPAMXlyYog
-Verifies or Validates
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_w-3S8VH1EeeZqqBXHGi26w
-Auditor [V] [DNG-Renamed-1]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_bpMZ0dSkEemFdPAMXlyYog
-Evidence
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_xFKvQVH1EeeZqqBXHGi26w
-Safety-Criticality [S] [DNG-Renamed-1]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_buDEodSkEemFdPAMXlyYog
-L2 Section Title
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_xTNxEYNzEeeaM-GYpXwRRw
-Notes/Additional Info [REQ] [DNG-Renamed-1]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_byYyEdSkEemFdPAMXlyYog
-Closes
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_xGmSoVH1EeeZqqBXHGi26w
-Approval Date [S]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_vLeCsVH1EeeZqqBXHGi26w
-Title
-http://purl.org/dc/terms/title
-Approver [S] [DNG-Renamed-1]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_bpswIdSkEemFdPAMXlyYog
-VnV Approach [V]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_u54jcVH1EeeZqqBXHGi26w
-Auditor [V]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_vJUGkVH1EeeZqqBXHGi26w
-Specifies
-http://open-services.net/ns/rm#specifies
-VAC [DNG-Renamed-1]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_boM7UdSkEemFdPAMXlyYog
-Implementing Systems [DNG-Renamed-1]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_btGCYdSkEemFdPAMXlyYog
-Notes/Additional Info [REQ]
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/__261UZN9EeewRuGkCUkqIw
-Implementer
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_b5Z_cTFmEemeK5JdDnyrgg
-References
-http://purl.org/dc/terms/references
-VAC
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_vS4SQVH1EeeZqqBXHGi26w
-Certifies
-https://cae-jazz-uat.jpl.nasa.gov/rm/types/_xEINcVH1EeeZqqBXHGi26w
-ForeignID
-http://jazz.net/ns/rm/dng/attribute#masterForeignId
-         */
+        return string != null ? string.toString().replaceAll("\"","\\\\\"") : "";
+        //return string != null ? string.toString().replaceAll(",","\\,") : "";
     }
 }

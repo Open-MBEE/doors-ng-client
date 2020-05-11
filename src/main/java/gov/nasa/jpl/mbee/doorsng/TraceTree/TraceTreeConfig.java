@@ -1,8 +1,8 @@
 package gov.nasa.jpl.mbee.doorsng.TraceTree;
 
-import java.util.List;
+import java.util.Map;
 
 public interface TraceTreeConfig {
-    public List<String> getVATypes();
-    public List<String> getVITypes();
+    public Map<String, String> getVATypes();
+    public Map<String, String> getVITypes();
 }
