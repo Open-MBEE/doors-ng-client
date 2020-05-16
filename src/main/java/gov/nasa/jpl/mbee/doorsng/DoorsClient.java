@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -49,6 +50,7 @@ import org.eclipse.lyo.oslc4j.core.model.AbstractResource;
 import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
 import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
+import org.eclipse.lyo.oslc4j.core.model.ServiceProvider;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
@@ -203,7 +205,13 @@ public class DoorsClient {
 
     public Requirement getRequirement(String resourceUrl) {
         ClientResponse response = getResponse(resourceUrl);
-        return response.getStatusCode() == HttpStatus.SC_OK ? response.getEntity(Requirement.class) : new Requirement();
+        try {
+            return response.getStatusCode() == HttpStatus.SC_OK ? response
+                .getEntity(Requirement.class) : new Requirement();
+        } catch (Exception e) {
+            logger.log(Level.INFO, e.getMessage(), e);
+        }
+        return new Requirement();
     }
 
     public ClientResponse getResponse(String resourceUrl) {
@@ -212,6 +220,23 @@ public class DoorsClient {
         try {
 
             response = client.getResource(resourceUrl, OSLCConstants.CT_RDF);
+
+        } catch (Exception e) {
+
+            logger.log(Level.SEVERE, e.getMessage(), e);
+
+        }
+
+        return response;
+
+    }
+
+    public ClientResponse getResponseJson(String resourceUrl) {
+        ClientResponse response = null;
+
+        try {
+
+            response = client.getResource(resourceUrl, OSLCConstants.CT_JSON);
 
         } catch (Exception e) {
 
@@ -753,7 +778,7 @@ public class DoorsClient {
     }
 
     public OslcQueryResult submitQuery(OslcQueryParameters params) {
-        OslcQuery query = new OslcQuery(client, queryCapability, 20, params);
+        OslcQuery query = new OslcQuery(client, queryCapability, 0, params);
         return query.submit();
     }
 
@@ -999,5 +1024,9 @@ public class DoorsClient {
         // perform the update
         int statusCode = updateRequirementFromRDF(updatedSrcReqAsRDF, sourceRequirementURL);
         System.out.println("Update statusCode:" + statusCode);
+    }
+
+    public DoorsFormAuthClient getClient() {
+        return client;
     }
 }
