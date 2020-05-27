@@ -16,8 +16,10 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 import org.apache.wink.client.ClientResponse;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
@@ -33,6 +35,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
     private static Map<String, Requirement> requirementCache = new HashMap<>();
     private static Map<URI, ResourceShape> resourceShapeCache = new HashMap<>();
     private static Map<URI, Object> listCache = new HashMap<>();
+    private static Map<String, Set<String>> childrenMap = new HashMap<>();
 
     private static final Map<String, String> vaTypes;
     static {
@@ -113,12 +116,19 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
             } else {
                 current = requirementCache.get(resultsUrl);
             }
+
+            if (current == null) {
+                continue;
+            }
+
             Map<String, Object> res = new HashMap<>();
 
             res.put("id", current.getIdentifier());
             res.put("Name", current.getTitle());
 
             res.put("Primary Text", current.getPrimaryText());
+            //res.put("Primary Text", "Currently not supported");
+
             res.put("Created", current.getCreated());
 
             ResourceShape resourceShape;
@@ -167,7 +177,8 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
                             res.put("Link:Verifies or Validates (>)", processLink(value, doors));
                             break;
                         case "Child Systems":
-                            res.put("Link:Parent Of (<)", processProperties(value, doors));
+                        case "Child Disposition - SSE":
+                            res.put(property.getTitle(), processProperties(value, doors));
                             break;
                         case "Parent Of":
                             res.put("Link:Parent Of (<)", processLink(value, doors));
@@ -222,6 +233,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
             reqs.add(res);
         }
 
+        //appendChildren(reqs);
         return reqs;
     }
 
@@ -243,12 +255,20 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
             } else {
                 current = requirementCache.get(resultsUrl);
             }
+
+            if (current == null) {
+                continue;
+            }
+
             Map<String, Object> res = new HashMap<>();
+
+            res.put("about", current.getAbout().toString());
 
             res.put("id", current.getIdentifier());
             res.put("Name", current.getTitle());
 
             res.put("Primary Text", current.getPrimaryText());
+            //res.put("Primary Text", "Currently not supported");
             res.put("Created", current.getCreated());
 
             ResourceShape resourceShape;
@@ -287,6 +307,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
                     String value = current.getCustomField(property.getPropertyDefinition());
                     switch (property.getTitle()) {
                         case "Child Of":
+                            processParents(value, current.getIdentifier());
                             res.put("Link:Child Of (>)", processLink(value, doors));
                             break;
                         case "Validated By":
@@ -297,10 +318,11 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
                             res.put("Link:Verifies or Validates (>)", processLink(value, doors));
                             break;
                         case "Child Systems":
-                            res.put("Link:Parent Of (<)", processProperties(value, doors));
+                        case "Child Disposition - SSE":
+                            res.put(property.getTitle(), processProperties(value, doors));
                             break;
                         case "Parent Of":
-                            res.put("Link:Parent Of (<)", processLink(value, doors));
+                            res.put("Link:Parent Of (<) (Not Used)", processLink(value, doors));
                             break;
                         case "VnV Method [V]":
                         case "Level":
@@ -352,6 +374,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
             reqs.add(res);
         }
 
+        //appendChildren(reqs);
         return reqs;
     }
 
@@ -373,14 +396,14 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
             for (String val : values) {
                 Requirement child = new Requirement();
                 String sanitized = val.replaceAll("[\\n\\t ]", "");
-                if (requirementCache.get(sanitized) == null) {
+                if (!sanitized.isEmpty() && requirementCache.get(sanitized) == null) {
                     Requirement pulledChild = doors.getRequirement(sanitized);
                     if (pulledChild != null) {
                         //System.out.println("ProcessLink got requirement: " + pulledChild.getIdentifier());
                         requirementCache.put(sanitized, pulledChild);
                         child = requirementCache.get(sanitized);
                     }
-                } else {
+                } else if (!sanitized.isEmpty()) {
                     child = requirementCache.get(sanitized);
                 }
                 sb.append(requirementToString(child));
@@ -388,6 +411,37 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
             }
         }
         return sb.toString();
+    }
+
+    private static void processParents(String parents, String child) {
+        if (parents != null) {
+            parents =
+                parents.startsWith("[") ? parents.substring(1, parents.length() - 1) : parents;
+            String[] values = parents.split(",");
+            for (String val : values) {
+                String sanitized = val.replaceAll("[\\n\\t ]", "");
+                childrenMap.getOrDefault(sanitized, new HashSet<>()).add(child);
+            }
+        }
+    }
+
+    private static void appendChildren(List<Map<String, Object>> results) {
+        for(int i = 0; i < results.size(); i++) {
+            Map<String, Object> result = results.get(i);
+            if (result.getOrDefault("about", null) != null ) {
+                if (childrenMap.getOrDefault(result.get("about").toString(), null) != null) {
+                    StringBuilder sb = new StringBuilder();
+                    for (String child : childrenMap.get(result.get("about").toString())) {
+                        if (requirementCache.get(child) != null) {
+                            Requirement childReq = requirementCache.get(child);
+                            sb.append(requirementToString(childReq));
+                            sb.append(String.format("%n"));
+                        }
+                    }
+                    results.get(i).put("Link: Parent Of (<)", sb.toString());
+                }
+            }
+        }
     }
 
     private static String requirementToString(Requirement requirement) {

@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 import org.apache.wink.client.ClientResponse;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
@@ -28,23 +29,25 @@ import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 
 public class TraceTreeEuropaConfig implements TraceTreeConfig {
 
-    private static final Logger logger = Logger.getLogger(TraceTreePsycheConfig.class.getName());
+    private static final Logger logger = Logger.getLogger(TraceTreeEuropaConfig.class.getName());
 
     private static Map<String, Requirement> requirementCache = new HashMap<>();
     private static Map<URI, ResourceShape> resourceShapeCache = new HashMap<>();
     private static Map<URI, Object> listCache = new HashMap<>();
+    private static Map<String, Set<String>> childrenMap = new HashMap<>();
 
     private static final Map<String, String> vaTypes;
     static {
         Map<String, String> temp = new HashMap<>();
-        temp.put("V&V Activity", "https://cae-jazz-uat.jpl.nasa.gov/rm/types/_4lqWcYAJEeqe14cBdsd0Qw");
+        temp.put("V&V Activity", "https://cae-jazz.jpl.nasa.gov/rm/types/_KWsu-G3VEeWoy88nVKDVYg");
         vaTypes = Collections.unmodifiableMap(temp);
     }
 
     private static final Map<String, String> viTypes;
     static {
         Map<String, String> temp = new HashMap<>();
-        temp.put("Requirement", "https://cae-jazz-uat.jpl.nasa.gov/rm/types/_KOzXN23VEeWoy88nVKDVYg");
+        temp.put("Requirement", "https://cae-jazz.jpl.nasa.gov/rm/types/_KOzXN23VEeWoy88nVKDVYg");
+        //temp.put("Requirement Document", "https://cae-jazz.jpl.nasa.gov/rm/types/_IkAnIWrqEean7Mv0CO7L9w");
         viTypes = Collections.unmodifiableMap(temp);
     }
 
@@ -85,6 +88,7 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
         return workflowMap;
     }
 
+
     public List<Map<String, Object>> getVIReqs(String type, DoorsClient doors, Property[] properties, Map<String, String> workflowMap) {
         OslcQueryParameters queryParams = new OslcQueryParameters();
         String prefix = "rm=<http://www.ibm.com/xmlns/rdm/rdf/>";
@@ -103,6 +107,11 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
             } else {
                 current = requirementCache.get(resultsUrl);
             }
+
+            if (current == null) {
+                continue;
+            }
+
             Map<String, Object> res = new HashMap<>();
 
             res.put("id", current.getIdentifier());
@@ -233,6 +242,11 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
             } else {
                 current = requirementCache.get(resultsUrl);
             }
+
+            if (current == null) {
+                continue;
+            }
+
             Map<String, Object> res = new HashMap<>();
 
             res.put("id", current.getIdentifier());
@@ -286,7 +300,7 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                         case "Verifies or Validates":
                             res.put("Link:Verifies or Validates (>)", processLink(value, doors));
                             break;
-                        case "Child Systems":
+                        case "Child Disposition":
                             res.put("Link:Parent Of (<)", processProperties(value, doors));
                             break;
                         case "Parent Of":
@@ -361,12 +375,15 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                 value.startsWith("[") ? value.substring(1, value.length() - 1) : value;
             String[] values = value.split(",");
             for (String val : values) {
-                Requirement child;
+                Requirement child = new Requirement();
                 String sanitized = val.replaceAll("[\\n\\t ]", "");
                 if (requirementCache.get(sanitized) == null) {
                     Requirement pulledChild = doors.getRequirement(sanitized);
-                    requirementCache.put(sanitized, pulledChild);
-                    child = requirementCache.get(sanitized);
+                    if (pulledChild != null) {
+                        //System.out.println("ProcessLink got requirement: " + pulledChild.getIdentifier());
+                        requirementCache.put(sanitized, pulledChild);
+                        child = requirementCache.get(sanitized);
+                    }
                 } else {
                     child = requirementCache.get(sanitized);
                 }
@@ -383,7 +400,6 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
             requirement.getTitle(), requirement.getAbout());
     }
 
-
     public static String processProperties(String value, DoorsClient doors) {
         StringBuilder sb = new StringBuilder();
         if (value != null) {
@@ -398,6 +414,7 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                 try {
                     String sanitized = val.replaceAll("[\\n\\t ]", "");
                     URI key = new URI(sanitized);
+                    System.out.println("ProcessLink checking: " + sanitized);
                     if (!listCache.containsKey(key)) {
                         String[] spl = value.split("#");
                         ClientResponse response = doors.getResponse(spl[0]);
@@ -429,9 +446,11 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                     RDFNode resource = statement.getObject();
                     if (resource.isResource()) {
                         Resource resourceAsResource = resource.asResource();
+                        System.out.println("RESOURCE URI: " + resourceAsResource.getURI());
                         listCache.put(uri, resourceAsResource.toString());
                     } else if (resource.isLiteral()) {
                         Literal resourceAsLiteral = resource.asLiteral();
+                        System.out.println("RESOURCE LITERAL: " + resourceAsLiteral.getString());
                         listCache.put(uri, resourceAsLiteral.getValue().toString());
                     } else {
                         listCache.put(uri, resource.toString());

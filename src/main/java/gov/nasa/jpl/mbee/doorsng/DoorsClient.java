@@ -211,7 +211,7 @@ public class DoorsClient {
         } catch (Exception e) {
             logger.log(Level.INFO, e.getMessage(), e);
         }
-        return new Requirement();
+        return null;
     }
 
     public ClientResponse getResponse(String resourceUrl) {
