@@ -14,7 +14,8 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.wink.client.ClientResponse;
 import org.apache.wink.client.RestClient;
 import org.eclipse.lyo.client.exception.JazzAuthErrorException;
@@ -32,7 +33,7 @@ import net.oauth.OAuthException;
  */
 public class DoorsFormAuthClient extends DoorsOslcClient {
 
-    private static Logger logger = Logger.getLogger(DoorsFormAuthClient.class);
+    private static Logger logger = LogManager.getLogger(DoorsFormAuthClient.class);
 
     private String url;
     private String authUrl;

@@ -1,43 +1,16 @@
 package gov.nasa.jpl.mbee.doorsng.clients;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashSet;
-import java.util.Set;
 
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpRequest;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.RedirectStrategy;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.protocol.HttpContext;
-import org.apache.wink.client.ClientConfig;
-import org.apache.wink.client.ClientResponse;
-import org.apache.wink.client.RestClient;
-import org.apache.wink.client.httpclient.ApacheHttpClientConfig;
-import org.eclipse.lyo.client.oslc.OSLCConstants;
-import org.eclipse.lyo.oslc4j.provider.jena.JenaProvidersRegistry;
-import org.eclipse.lyo.oslc4j.provider.json4j.Json4JProvidersRegistry;
-
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.Property;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.Resource;
-import com.hp.hpl.jena.rdf.model.Statement;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
-import com.hp.hpl.jena.util.FileManager;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.util.FileManager;
 
 import gov.nasa.jpl.mbee.doorsng.DoorsClient;
-import gov.nasa.jpl.mbee.doorsng.model.Folder;
-import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 
 public class CreateRequirement {
 

@@ -1,12 +1,5 @@
 package gov.nasa.jpl.mbee.doorsng.TraceTree;
 
-import com.hp.hpl.jena.rdf.model.Literal;
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.Resource;
-import com.hp.hpl.jena.rdf.model.Statement;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
 import gov.nasa.jpl.mbee.doorsng.DoorsClient;
 import gov.nasa.jpl.mbee.doorsng.model.Person;
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
@@ -21,6 +14,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
+import org.apache.jena.rdf.model.Literal;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.wink.client.ClientResponse;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
 import org.eclipse.lyo.client.oslc.resources.OslcQueryResult;
@@ -181,7 +181,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
                             res.put(property.getTitle(), processProperties(value, doors));
                             break;
                         case "Parent Of":
-                            res.put("Link:Parent Of (<)", processLink(value, doors));
+                            res.put("Link:Parent Of (<)", value);
                             break;
                         case "VnV Method [V]":
                         case "Level":
@@ -217,7 +217,8 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
                             }
                             res.put(property.getTitle(), stringVal);
                             break;
-                        case "Owner [S]" :
+                        case "VA Owner":
+                        case "Owner [S]":
                             if (value != null) {
                                 ClientResponse clientResponse = doors.getResponse(value);
                                 Person owner = clientResponse.getEntity(Person.class);
@@ -233,8 +234,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
             reqs.add(res);
         }
 
-        //appendChildren(reqs);
-        return reqs;
+        return appendChildren(reqs);
     }
 
     public List<Map<String, Object>> getVAReqs(String type, DoorsClient doors, Property[] properties, Map<String, String> workflowMap) {
@@ -307,7 +307,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
                     String value = current.getCustomField(property.getPropertyDefinition());
                     switch (property.getTitle()) {
                         case "Child Of":
-                            processParents(value, current.getIdentifier());
+                            processParents(value, current);
                             res.put("Link:Child Of (>)", processLink(value, doors));
                             break;
                         case "Validated By":
@@ -322,7 +322,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
                             res.put(property.getTitle(), processProperties(value, doors));
                             break;
                         case "Parent Of":
-                            res.put("Link:Parent Of (<) (Not Used)", processLink(value, doors));
+                            res.put("Link:Parent Of (<)", value);
                             break;
                         case "VnV Method [V]":
                         case "Level":
@@ -358,6 +358,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
                             }
                             res.put(property.getTitle(), stringVal);
                             break;
+                        case "VA Owner":
                         case "Owner [S]" :
                             if (value != null) {
                                 ClientResponse clientResponse = doors.getResponse(value);
@@ -374,8 +375,7 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
             reqs.add(res);
         }
 
-        //appendChildren(reqs);
-        return reqs;
+        return appendChildren(reqs);
     }
 
 
@@ -413,35 +413,36 @@ public class TraceTreePsycheConfig implements TraceTreeConfig {
         return sb.toString();
     }
 
-    private static void processParents(String parents, String child) {
+    private static void processParents(String parents, Requirement child) {
         if (parents != null) {
             parents =
                 parents.startsWith("[") ? parents.substring(1, parents.length() - 1) : parents;
+            String childString = requirementToString(child);
             String[] values = parents.split(",");
             for (String val : values) {
                 String sanitized = val.replaceAll("[\\n\\t ]", "");
-                childrenMap.getOrDefault(sanitized, new HashSet<>()).add(child);
+                childrenMap.getOrDefault(sanitized, new HashSet<>()).add(childString);
             }
         }
     }
 
-    private static void appendChildren(List<Map<String, Object>> results) {
-        for(int i = 0; i < results.size(); i++) {
-            Map<String, Object> result = results.get(i);
-            if (result.getOrDefault("about", null) != null ) {
+    private static List<Map<String, Object>> appendChildren(List<Map<String, Object>> results) {
+        List<Map<String, Object>> appended = new ArrayList<>();
+        for (Map<String, Object> result : results) {
+            if (result.getOrDefault("about", null) != null) {
                 if (childrenMap.getOrDefault(result.get("about").toString(), null) != null) {
+                    System.out.println("Children found!");
                     StringBuilder sb = new StringBuilder();
                     for (String child : childrenMap.get(result.get("about").toString())) {
-                        if (requirementCache.get(child) != null) {
-                            Requirement childReq = requirementCache.get(child);
-                            sb.append(requirementToString(childReq));
-                            sb.append(String.format("%n"));
-                        }
+                        sb.append(child);
+                        sb.append(String.format("%n"));
                     }
-                    results.get(i).put("Link: Parent Of (<)", sb.toString());
+                    result.put("Link: Parent Of (<)", sb.toString());
                 }
             }
+            appended.add(result);
         }
+        return appended;
     }
 
     private static String requirementToString(Requirement requirement) {

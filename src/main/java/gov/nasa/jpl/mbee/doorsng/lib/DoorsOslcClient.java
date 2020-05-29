@@ -10,7 +10,8 @@ import java.util.Map;
 import javax.ws.rs.core.Response.Status;
 
 import org.apache.http.HttpHeaders;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.wink.client.ClientResponse;
 import org.apache.wink.client.Resource;
 import org.apache.wink.client.RestClient;
@@ -20,7 +21,7 @@ import org.eclipse.lyo.client.oslc.OSLCConstants;
 public class DoorsOslcClient extends org.eclipse.lyo.client.oslc.OslcClient
 {
 
-    private static Logger logger = Logger.getLogger(DoorsOslcClient.class);
+    private static Logger logger = LogManager.getLogger(DoorsOslcClient.class);
 
     public DoorsOslcClient()
     {

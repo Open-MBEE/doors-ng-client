@@ -38,6 +38,9 @@ import org.apache.http.client.params.HttpClientParams;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Resource;
 import org.apache.wink.client.ClientResponse;
 import org.eclipse.lyo.client.exception.ResourceNotFoundException;
 import org.eclipse.lyo.client.oslc.OAuthRedirectException;
@@ -50,16 +53,10 @@ import org.eclipse.lyo.oslc4j.core.model.AbstractResource;
 import org.eclipse.lyo.oslc4j.core.model.OslcMediaType;
 import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
-import org.eclipse.lyo.oslc4j.core.model.ServiceProvider;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
-import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.Resource;
 
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 import gov.nasa.jpl.mbee.doorsng.model.RequirementCollection;
@@ -1007,7 +1004,7 @@ public class DoorsClient {
         // set up RDF resources
         Resource sourceRequirementResource = rdfModel.getResource(sourceRequirementURL);
         Resource targetRequirementResource = rdfModel.getResource(targetRequirementURL);
-        com.hp.hpl.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
+        org.apache.jena.rdf.model.Property customLinkProperty = rdfModel.createProperty(customLinkURL);
 
         // check if the requirement already has custom link value(s)
         // if yes, delete them

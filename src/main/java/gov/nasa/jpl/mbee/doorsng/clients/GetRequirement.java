@@ -4,15 +4,14 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.wink.client.ClientResponse;
-
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.Property;
-import com.hp.hpl.jena.rdf.model.RDFNode;
-import com.hp.hpl.jena.rdf.model.Resource;
-import com.hp.hpl.jena.rdf.model.Statement;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
 
 import gov.nasa.jpl.mbee.doorsng.DoorsClient;
 import gov.nasa.jpl.mbee.doorsng.model.Folder;
@@ -24,11 +23,6 @@ public class GetRequirement {
 		DoorsClient doors;
 		try {
 			doors = new DoorsClient("cae.integ", "GT42NYmOj-W3", "https://doors-ng-uat.jpl.nasa.gov:9443/rm/", "myMagicDrawProject");
-			
-			
-			
-			
-			
 			
 			for (Requirement requirement : doors.getRequirements()) {
 				System.out.println("***********************");
@@ -47,9 +41,9 @@ public class GetRequirement {
 				// print out the predicate, subject and object of each statement
 				while (iter.hasNext()) {
 				    Statement stmt      = iter.nextStatement();  // get next statement
-				    Resource  subject   = stmt.getSubject();     // get the subject
-				    Property  predicate = stmt.getPredicate();   // get the predicate
-				    RDFNode   object    = stmt.getObject();      // get the object
+				    Resource subject   = stmt.getSubject();     // get the subject
+				    Property predicate = stmt.getPredicate();   // get the predicate
+				    RDFNode object    = stmt.getObject();      // get the object
 
 				    System.out.print(subject.toString());
 				    System.out.print(" " + predicate.toString() + " ");
