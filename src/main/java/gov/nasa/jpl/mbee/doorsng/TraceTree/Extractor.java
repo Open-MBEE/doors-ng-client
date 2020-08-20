@@ -1,6 +1,7 @@
 package gov.nasa.jpl.mbee.doorsng.TraceTree;
 
 import gov.nasa.jpl.mbee.doorsng.DoorsClient;
+import gov.nasa.jpl.mbee.doorsng.TraceTree.adaptations.Europa;
 import java.io.BufferedWriter;
 import java.io.Console;
 import java.io.FileWriter;
@@ -25,9 +26,9 @@ import org.json.CDL;
 import org.json.JSONArray;
 
 
-public class TraceTreeExport {
+public class Extractor {
 
-    private static final Logger logger = Logger.getLogger(TraceTreeEuropaConfig.class.getName());
+    private static final Logger logger = Logger.getLogger(Europa.class.getName());
     private static String pass;
 
     public static void main(String[] args) throws ParseException {
@@ -64,12 +65,7 @@ public class TraceTreeExport {
             DoorsClient doors = new DoorsClient(user, pass, url, project);
             doors.setProject(project);
 
-            TraceTreeConfig ttpc = null;
-            if (project.equals("Europa")) {
-                ttpc = new TraceTreeEuropaConfig();
-            } else {
-                ttpc = new TraceTreePsycheConfig();
-            }
+            ExtractorConfig ttpc = (ExtractorConfig) Class.forName(project).getDeclaredConstructor().newInstance();
 
             Map<String, String> workflowMap = ttpc.getWorkflowMap();
 

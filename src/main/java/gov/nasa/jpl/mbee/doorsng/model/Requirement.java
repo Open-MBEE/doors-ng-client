@@ -19,7 +19,9 @@ import org.eclipse.lyo.oslc4j.core.annotation.OslcRange;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcReadOnly;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcResourceShape;
 import org.eclipse.lyo.oslc4j.core.annotation.OslcTitle;
+import org.eclipse.lyo.oslc4j.core.annotation.OslcValueType;
 import org.eclipse.lyo.oslc4j.core.model.Link;
+import org.eclipse.lyo.oslc4j.core.model.ValueType;
 
 @OslcNamespace(RmConstants.REQUIREMENTS_MANAGEMENT_NAMESPACE)
 @OslcResourceShape(title = "Requirement Resource Shape", describes = RmConstants.TYPE_REQUIREMENT)
@@ -30,6 +32,8 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
     private Map<QName, Object> extended = new HashMap<QName, Object>();
     private String resourceUrl;
     private String eTag;
+
+    private String primaryText;
 
     public Requirement()
     {
@@ -61,19 +65,6 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
     public void setCustomField(URI property, Object value) {
         extended.put(convertUriToQname(property), value);
-        this.setExtendedProperties(extended);
-    }
-
-    public String getPrimaryText() {
-        try {
-            return this.getExtendedProperties().get(RmConstants.PROPERTY_PRIMARY_TEXT).toString();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    public void setPrimaryText(final String primaryText) {
-        extended.put(RmConstants.PROPERTY_PRIMARY_TEXT, primaryText);
         this.setExtendedProperties(extended);
     }
 
@@ -112,6 +103,17 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
         String url = uri.toString().replace(last, "");
         return new QName(url, last);
     }
-  
-   
+
+    @OslcDescription("Primary Text field.")
+    @OslcPropertyDefinition("http://jazz.net/ns/rm#primaryText")
+    @OslcTitle("Primary Text")
+    @OslcValueType(ValueType.String)
+    public String getPrimaryText() {
+        return this.primaryText;
+    }
+
+    public void setPrimaryText(String primaryText) {
+        this.primaryText = primaryText;
+    }
+
 }

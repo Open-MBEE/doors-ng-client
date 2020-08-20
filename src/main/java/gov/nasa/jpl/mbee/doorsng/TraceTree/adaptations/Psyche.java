@@ -1,14 +1,18 @@
-package gov.nasa.jpl.mbee.doorsng.TraceTree;
+package gov.nasa.jpl.mbee.doorsng.TraceTree.adaptations;
 
 import gov.nasa.jpl.mbee.doorsng.DoorsClient;
+import gov.nasa.jpl.mbee.doorsng.TraceTree.ExtractorConfig;
 import gov.nasa.jpl.mbee.doorsng.model.Person;
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
+import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
+import java.io.FileWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,9 +31,9 @@ import org.eclipse.lyo.oslc4j.core.model.Link;
 import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 
-public class TraceTreeEuropaConfig implements TraceTreeConfig {
+public class Psyche implements ExtractorConfig {
 
-    private static final Logger logger = Logger.getLogger(TraceTreeEuropaConfig.class.getName());
+    private static final Logger logger = Logger.getLogger(Psyche.class.getName());
 
     private static Map<String, Requirement> requirementCache = new HashMap<>();
     private static Map<URI, ResourceShape> resourceShapeCache = new HashMap<>();
@@ -39,15 +43,24 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
     private static final Map<String, String> vaTypes;
     static {
         Map<String, String> temp = new HashMap<>();
-        temp.put("V&V Activity", "https://cae-jazz.jpl.nasa.gov/rm/types/_KWsu-G3VEeWoy88nVKDVYg");
+        //temp.put("V&V Activity", "https://cae-jazz-uat.jpl.nasa.gov/rm/types/_wG6-UVH1EeeZqqBXHGi26w");
+        temp.put("V&V Activity", "https://cae-jazz.jpl.nasa.gov/rm/types/_wG6-UVH1EeeZqqBXHGi26w");
         vaTypes = Collections.unmodifiableMap(temp);
     }
 
     private static final Map<String, String> viTypes;
     static {
         Map<String, String> temp = new HashMap<>();
-        temp.put("Requirement", "https://cae-jazz.jpl.nasa.gov/rm/types/_KOzXN23VEeWoy88nVKDVYg");
-        //temp.put("Requirement Document", "https://cae-jazz.jpl.nasa.gov/rm/types/_IkAnIWrqEean7Mv0CO7L9w");
+        //temp.put("Requirement", "https://cae-jazz-uat.jpl.nasa.gov/rm/types/_wrFbUVH1EeeZqqBXHGi26w");
+        //temp.put("Requirement - AVS", "https://cae-jazz-uat.jpl.nasa.gov/rm/types/_d3ATkUcREeiggbwaJnQh2g");
+        //temp.put("Requirement - FS Implementer", "https://cae-jazz-uat.jpl.nasa.gov/rm/types/_MZG5UEcREeiggbwaJnQh2g");
+        //temp.put("Requirement - MS Implementer", "https://cae-jazz-uat.jpl.nasa.gov/rm/types/_MIsfkVMWEeiggbwaJnQh2g");
+        //temp.put("Requirement - PLD Implementer", "https://cae-jazz-uat.jpl.nasa.gov/rm/types/_TmaY4VMXEeiggbwaJnQh2g");
+        temp.put("Requirement", "https://cae-jazz.jpl.nasa.gov/rm/types/_wrFbUVH1EeeZqqBXHGi26w");
+        temp.put("Requirement - AVS", "https://cae-jazz.jpl.nasa.gov/rm/types/_d3ATkUcREeiggbwaJnQh2g");
+        temp.put("Requirement - FS Implementer", "https://cae-jazz.jpl.nasa.gov/rm/types/_MZG5UEcREeiggbwaJnQh2g");
+        temp.put("Requirement - MS Implementer", "https://cae-jazz.jpl.nasa.gov/rm/types/_MIsfkVMWEeiggbwaJnQh2g");
+        temp.put("Requirement - PLD Implementer", "https://cae-jazz.jpl.nasa.gov/rm/types/_TmaY4VMXEeiggbwaJnQh2g");
         viTypes = Collections.unmodifiableMap(temp);
     }
 
@@ -88,11 +101,11 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
         return workflowMap;
     }
 
-
     public List<Map<String, Object>> getVIReqs(String type, DoorsClient doors, Property[] properties, Map<String, String> workflowMap) {
         OslcQueryParameters queryParams = new OslcQueryParameters();
         String prefix = "rm=<http://www.ibm.com/xmlns/rdm/rdf/>";
-        String where = String.format("rm:ofType=<%s>", type);
+        //String where = String.format("rm:ofType=<%s>", type);
+        String where = String.format("rm:ofType=<%s>", "*");
 
         queryParams.setSelect("*");
         queryParams.setPrefix(prefix);
@@ -100,9 +113,21 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
         OslcQueryResult results = doors.submitQuery(queryParams);
 
         List<Map<String, Object>> reqs = new ArrayList<>();
+        int i = 0;
         for (String resultsUrl : results.getMembersUrls()) {
             Requirement current;
             if (requirementCache.get(resultsUrl) == null) {
+                try {
+                    ClientResponse clientResponse = doors.getResponse(resultsUrl);
+                    String currentReq = clientResponse.getEntity(String.class);
+                    BufferedWriter writer = new BufferedWriter(new FileWriter("vis/" + i + ".xml", true));
+                    writer.append(currentReq);
+                    writer.close();
+                    i++;
+                    continue;
+                } catch (Exception e) {
+                    //
+                }
                 current = doors.getRequirement(resultsUrl);
             } else {
                 current = requirementCache.get(resultsUrl);
@@ -117,7 +142,9 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
             res.put("id", current.getIdentifier());
             res.put("Name", current.getTitle());
 
-            res.put("Primary Text", current.getPrimaryText());
+            res.put("PrimaryText", current.getPrimaryText());
+            //res.put("Primary Text", "Currently not supported");
+
             res.put("Created", current.getCreated());
 
             ResourceShape resourceShape;
@@ -166,12 +193,15 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                             res.put("Link:Verifies or Validates (>)", processLink(value, doors));
                             break;
                         case "Child Systems":
-                            res.put("Link:Parent Of (<)", processProperties(value, doors));
+                        case "Child Disposition - SSE":
+                            res.put(property.getTitle(), processProperties(value, doors));
                             break;
                         case "Parent Of":
-                            res.put("Link:Parent Of (<)", processLink(value, doors));
+                            res.put("Link:Parent Of (<)", value);
                             break;
+                        case "Activity Type":
                         case "VnV Method [V]":
+                        case "VnV Priority [V]":
                         case "Level":
                         case "VAC":
                         case "Owning System":
@@ -205,7 +235,8 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                             }
                             res.put(property.getTitle(), stringVal);
                             break;
-                        case "Owner [S]" :
+                        case "VA Owner":
+                        case "Owner [S]":
                             if (value != null) {
                                 ClientResponse clientResponse = doors.getResponse(value);
                                 Person owner = clientResponse.getEntity(Person.class);
@@ -221,23 +252,33 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
             reqs.add(res);
         }
 
-        return reqs;
+        return appendChildren(reqs);
     }
 
     public List<Map<String, Object>> getVAReqs(String type, DoorsClient doors, Property[] properties, Map<String, String> workflowMap) {
         OslcQueryParameters queryParams = new OslcQueryParameters();
         String prefix = "rm=<http://www.ibm.com/xmlns/rdm/rdf/>";
-        String where = String.format("rm:ofType=<%s>", type);
 
         queryParams.setSelect("*");
         queryParams.setPrefix(prefix);
-        queryParams.setWhere(where);
         OslcQueryResult results = doors.submitQuery(queryParams);
 
         List<Map<String, Object>> reqs = new ArrayList<>();
+        int i = 0;
         for (String resultsUrl : results.getMembersUrls()) {
             Requirement current;
             if (requirementCache.get(resultsUrl) == null) {
+                try {
+                    ClientResponse clientResponse = doors.getResponse(resultsUrl);
+                    String currentReq = clientResponse.getEntity(String.class);
+                    BufferedWriter writer = new BufferedWriter(new FileWriter("vas/" + i + ".xml", true));
+                    writer.append(currentReq);
+                    writer.close();
+                    i++;
+                    continue;
+                } catch (Exception e) {
+                    //
+                }
                 current = doors.getRequirement(resultsUrl);
             } else {
                 current = requirementCache.get(resultsUrl);
@@ -249,10 +290,13 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
 
             Map<String, Object> res = new HashMap<>();
 
+            res.put("about", current.getAbout().toString());
+
             res.put("id", current.getIdentifier());
             res.put("Name", current.getTitle());
 
             res.put("Primary Text", current.getPrimaryText());
+            //res.put("Primary Text", "Currently not supported");
             res.put("Created", current.getCreated());
 
             ResourceShape resourceShape;
@@ -291,6 +335,7 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                     String value = current.getCustomField(property.getPropertyDefinition());
                     switch (property.getTitle()) {
                         case "Child Of":
+                            processParents(value, current);
                             res.put("Link:Child Of (>)", processLink(value, doors));
                             break;
                         case "Validated By":
@@ -300,13 +345,16 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                         case "Verifies or Validates":
                             res.put("Link:Verifies or Validates (>)", processLink(value, doors));
                             break;
-                        case "Child Disposition":
-                            res.put("Link:Parent Of (<)", processProperties(value, doors));
+                        case "Child Systems":
+                        case "Child Disposition - SSE":
+                            res.put(property.getTitle(), processProperties(value, doors));
                             break;
                         case "Parent Of":
-                            res.put("Link:Parent Of (<)", processLink(value, doors));
+                            res.put("Link:Parent Of (<)", value);
                             break;
+                        case "Activity Type":
                         case "VnV Method [V]":
+                        case "VnV Priority [V]":
                         case "Level":
                         case "VAC":
                         case "Owning System":
@@ -340,6 +388,7 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                             }
                             res.put(property.getTitle(), stringVal);
                             break;
+                        case "VA Owner":
                         case "Owner [S]" :
                             if (value != null) {
                                 ClientResponse clientResponse = doors.getResponse(value);
@@ -356,7 +405,7 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
             reqs.add(res);
         }
 
-        return reqs;
+        return appendChildren(reqs);
     }
 
 
@@ -377,14 +426,14 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
             for (String val : values) {
                 Requirement child = new Requirement();
                 String sanitized = val.replaceAll("[\\n\\t ]", "");
-                if (requirementCache.get(sanitized) == null) {
+                if (!sanitized.isEmpty() && requirementCache.get(sanitized) == null) {
                     Requirement pulledChild = doors.getRequirement(sanitized);
                     if (pulledChild != null) {
                         //System.out.println("ProcessLink got requirement: " + pulledChild.getIdentifier());
                         requirementCache.put(sanitized, pulledChild);
                         child = requirementCache.get(sanitized);
                     }
-                } else {
+                } else if (!sanitized.isEmpty()) {
                     child = requirementCache.get(sanitized);
                 }
                 sb.append(requirementToString(child));
@@ -392,6 +441,40 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
             }
         }
         return sb.toString();
+    }
+
+    private static void processParents(String parents, Requirement child) {
+        if (parents != null) {
+            parents =
+                parents.startsWith("[") ? parents.substring(1, parents.length() - 1) : parents;
+            String childString = requirementToString(child);
+            String[] values = parents.split(",");
+            for (String val : values) {
+                String sanitized = val.replaceAll("[\\n\\t ]", "");
+                Set<String> children = childrenMap.getOrDefault(sanitized, new HashSet<>());
+                children.add(childString);
+                childrenMap.put(sanitized, children);
+            }
+        }
+    }
+
+    private static List<Map<String, Object>> appendChildren(List<Map<String, Object>> results) {
+        List<Map<String, Object>> appended = new ArrayList<>();
+        for (Map<String, Object> result : results) {
+            if (result.getOrDefault("about", null) != null) {
+                if (childrenMap.getOrDefault(result.get("about").toString(), null) != null) {
+                    System.out.println("Children found!");
+                    StringBuilder sb = new StringBuilder();
+                    for (String child : childrenMap.get(result.get("about").toString())) {
+                        sb.append(child);
+                        sb.append(String.format("%n"));
+                    }
+                    result.put("Link: Parent Of (<)", sb.toString());
+                }
+            }
+            appended.add(result);
+        }
+        return appended;
     }
 
     private static String requirementToString(Requirement requirement) {
@@ -446,11 +529,11 @@ public class TraceTreeEuropaConfig implements TraceTreeConfig {
                     RDFNode resource = statement.getObject();
                     if (resource.isResource()) {
                         Resource resourceAsResource = resource.asResource();
-                        System.out.println("RESOURCE URI: " + resourceAsResource.getURI());
+                        //System.out.println("RESOURCE URI: " + resourceAsResource.getURI());
                         listCache.put(uri, resourceAsResource.toString());
                     } else if (resource.isLiteral()) {
                         Literal resourceAsLiteral = resource.asLiteral();
-                        System.out.println("RESOURCE LITERAL: " + resourceAsLiteral.getString());
+                        //System.out.println("RESOURCE LITERAL: " + resourceAsLiteral.getString());
                         listCache.put(uri, resourceAsLiteral.getValue().toString());
                     } else {
                         listCache.put(uri, resource.toString());

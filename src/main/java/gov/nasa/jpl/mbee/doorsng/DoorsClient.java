@@ -42,6 +42,7 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.wink.client.ClientResponse;
+import org.apache.wink.client.internal.handlers.ClientResponseImpl;
 import org.eclipse.lyo.client.exception.ResourceNotFoundException;
 import org.eclipse.lyo.client.oslc.OAuthRedirectException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
@@ -203,8 +204,10 @@ public class DoorsClient {
     public Requirement getRequirement(String resourceUrl) {
         ClientResponse response = getResponse(resourceUrl);
         try {
-            return response.getStatusCode() == HttpStatus.SC_OK ? response
-                .getEntity(Requirement.class) : new Requirement();
+            if (response.getStatusCode() == HttpStatus.SC_OK) {
+                return response.getEntity(Requirement.class);
+            }
+            return new Requirement();
         } catch (Exception e) {
             logger.log(Level.INFO, e.getMessage(), e);
         }
@@ -775,7 +778,7 @@ public class DoorsClient {
     }
 
     public OslcQueryResult submitQuery(OslcQueryParameters params) {
-        OslcQuery query = new OslcQuery(client, queryCapability, 0, params);
+        OslcQuery query = new OslcQuery(client, queryCapability, 20, params);
         return query.submit();
     }
 
