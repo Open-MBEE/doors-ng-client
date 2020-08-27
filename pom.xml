@@ -92,7 +92,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <mainClass>gov.nasa.jpl.mbee.doorsng.TraceTree.Extractor</mainClass>
+              <mainClass>gov.nasa.jpl.mbee.doorsng.DoorsClientCLI</mainClass>
             </manifest>
           </archive>
         </configuration>
