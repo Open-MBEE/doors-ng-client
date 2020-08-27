@@ -22,7 +22,6 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -42,7 +41,6 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.wink.client.ClientResponse;
-import org.apache.wink.client.internal.handlers.ClientResponseImpl;
 import org.eclipse.lyo.client.exception.ResourceNotFoundException;
 import org.eclipse.lyo.client.oslc.OAuthRedirectException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
@@ -119,28 +117,7 @@ public class DoorsClient {
         throws Exception {
 
         requirementArtifactType = "Requirement"; // assuming default artifact type since user didn't
-        // use constructor above
-
-        projectProperties = new HashMap<String, URI>();
-        projectPropertiesDetails = new HashMap<String, String>();
-
-        doorsUrl = webContextUrl;
-
-        helper = new DoorsRootServicesHelper(webContextUrl, OSLCConstants.OSLC_RM_V2);
-        String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
-        client = helper.initFormClient(user, password, authUrl);
-
-        if (client.login() == HttpStatus.SC_OK) {
-            JSESSIONID = client.getSessionId();
-            if (projectArea != null) {
-                if (doesProjectExists(projectArea)) {
-                    setProject(projectArea);
-                } else {
-                    setProject("");
-                }
-            }
-        }
-
+        new DoorsClient(user, password, webContextUrl, projectArea, requirementArtifactType);
     }
 
     public DoorsClient(String consumerKey, String consumerSecret, String user, String password,
@@ -181,25 +158,13 @@ public class DoorsClient {
 
         } catch (ResourceNotFoundException e) {
 
-            try {
-
-                createProject(projectArea);
-
-            } catch (Exception f) {
-
-                logger.log(Level.SEVERE, "Couldn't create project", f);
-
-            }
+            // Should do something other than try to create...
 
         } catch (Exception e) {
 
             e.printStackTrace();
 
         }
-    }
-
-    public String getProject() {
-        return client.getProject();
     }
 
     public <T extends AbstractResource> T getResource(Class<T> type, URI resourceUrl) {
@@ -808,6 +773,7 @@ public class DoorsClient {
         do {
 
             for (String resultsUrl : result.getMembersUrls()) {
+
                 ClientResponse response = null;
 
                 logger.info("Getting Requirement: " + resultsUrl);

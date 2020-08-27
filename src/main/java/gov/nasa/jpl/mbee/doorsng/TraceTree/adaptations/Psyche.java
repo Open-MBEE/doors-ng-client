@@ -104,8 +104,7 @@ public class Psyche implements ExtractorConfig {
     public List<Map<String, Object>> getVIReqs(String type, DoorsClient doors, Property[] properties, Map<String, String> workflowMap) {
         OslcQueryParameters queryParams = new OslcQueryParameters();
         String prefix = "rm=<http://www.ibm.com/xmlns/rdm/rdf/>";
-        //String where = String.format("rm:ofType=<%s>", type);
-        String where = String.format("rm:ofType=<%s>", "*");
+        String where = String.format("rm:ofType=<%s>", type);
 
         queryParams.setSelect("*");
         queryParams.setPrefix(prefix);
