@@ -1,5 +1,6 @@
 package gov.nasa.jpl.mbee.doorsng;
 
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsOslcClient;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -69,8 +70,7 @@ public class DoorsClient {
 
     private static final Logger logger = Logger.getLogger(DoorsClient.class.getName());
 
-    public static DoorsFormAuthClient client;
-    private static DoorsOAuthClient oclient;
+    public static DoorsOslcClient client;
     private static DoorsRootServicesHelper helper;
     private static String requirementFactory;
     private static String requirementCollectionFactory;
@@ -104,8 +104,8 @@ public class DoorsClient {
         String authUrl = webContextUrl.replaceFirst("/rm", "/jts");
         client = helper.initFormClient(user, password, authUrl);
 
-        if (client.login() == HttpStatus.SC_OK) {
-            JSESSIONID = client.getSessionId();
+        if (((DoorsFormAuthClient) client).login() == HttpStatus.SC_OK) {
+            JSESSIONID = ((DoorsFormAuthClient) client).getSessionId();
             if (projectArea != null) {
                 setProject(projectArea);
             }
@@ -129,16 +129,16 @@ public class DoorsClient {
         doorsUrl = webContextUrl;
         helper = new DoorsRootServicesHelper(doorsUrl, OSLCConstants.OSLC_RM_V2);
         String authUrl = doorsUrl.replaceFirst("/rm", "/jts");
-        oclient = helper.initOAuthClient(consumerKey, consumerSecret);
+        client = helper.initOAuthClient(consumerKey, consumerSecret);
 
         if (client != null) {
             try {
 
-                oclient.getResource(doorsUrl, OSLCConstants.CT_RDF);
+                client.getResource(doorsUrl, OSLCConstants.CT_RDF);
 
             } catch (OAuthRedirectException oauthE) {
 
-                validateTokens(oclient, oauthE, consumerKey, consumerSecret, user, password,
+                validateTokens((DoorsOAuthClient) client, oauthE, consumerKey, consumerSecret, user, password,
                     authUrl);
                 ClientResponse response = client.getResource(doorsUrl, OSLCConstants.CT_RDF);
                 response.getEntity(InputStream.class).close();
@@ -272,10 +272,9 @@ public class DoorsClient {
         ClientResponse response;
 
         try {
-
-            response = client.createDoorsResource(requirementFactory, requirement,
+            response = client.createResource(requirementFactory, requirement,
                 OslcMediaType.APPLICATION_RDF_XML,
-                OslcMediaType.APPLICATION_RDF_XML);
+                OslcMediaType.APPLICATION_RDF_XML, new HashMap<>());
             response.consumeContent();
 
             if (response.getStatusCode() == HttpStatus.SC_CREATED) {
@@ -389,9 +388,10 @@ public class DoorsClient {
 
             Requirement check = getRequirement(requirementURL);
 
-            response = client
-                .updateDoorsResource(requirementURL, entityBody, OslcMediaType.APPLICATION_RDF_XML,
-                    OslcMediaType.APPLICATION_RDF_XML, check.getEtag());
+            Map<String, String> headers = new HashMap<>();
+            headers.put(HttpHeaders.IF_MATCH, check.getEtag());
+
+            response = client.createResource(requirementURL, entityBody, OslcMediaType.APPLICATION_RDF_XML, OslcMediaType.APPLICATION_RDF_XML, headers);
 
             response.consumeContent();
 
@@ -1022,7 +1022,7 @@ public class DoorsClient {
         System.out.println("Update statusCode:" + statusCode);
     }
 
-    public DoorsFormAuthClient getClient() {
+    public DoorsOslcClient getClient() {
         return client;
     }
 }

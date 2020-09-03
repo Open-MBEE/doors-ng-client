@@ -234,48 +234,5 @@ public class DoorsFormAuthClient extends DoorsOslcClient {
             retval = header.getValue();
         return retval;
     }
-
-    public ClientResponse updateDoorsResource(String url, final String entityBody, String mediaType, String acceptType, String ifMatch) throws IOException, OAuthException, URISyntaxException {
-		ClientResponse response = null;
-		RestClient restClient = new RestClient(getClientConfig());
-		boolean redirect = false;
-
-		do {
-			response = restClient.resource(url).contentType(mediaType).accept(acceptType)
-					             .header(OSLCConstants.OSLC_CORE_VERSION,"2.0").header(HttpHeaders.IF_MATCH, ifMatch).put(ClientResponse.class, entityBody);
-
-			if (response.getStatusType().getFamily() == Status.Family.REDIRECTION) {
-				url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
-				response.consumeContent();
-				redirect = true;
-			} else {
-				redirect = false;
-			}
-		} while (redirect);
-
-		return response;
-	}
-    
-    public ClientResponse createDoorsResource(String url, final String entityBody, String mediaType, String acceptType) throws IOException, OAuthException, URISyntaxException {
-
-		ClientResponse response = null;
-		RestClient restClient = new RestClient(getClientConfig());
-		boolean redirect = false;
-
-		do {
-			response = restClient.resource(url).contentType(mediaType).accept(acceptType).header(OSLCConstants.OSLC_CORE_VERSION,"2.0").post(ClientResponse.class, entityBody);
-
-			if (response.getStatusType().getFamily() == Status.Family.REDIRECTION) {
-				url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
-				response.consumeContent();
-				redirect = true;
-			} else {
-				redirect = false;
-			}
-		} while (redirect);
-
-		return response;
-	}
-    
     
 }
