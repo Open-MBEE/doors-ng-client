@@ -44,6 +44,8 @@ public class DoorsClientCLI {
         options.addOption("project", true, "project area");
         options.addOption("stdout", true, "print to stdout");
         options.addOption("pass", true, "Use stdin instead");
+        options.addOption("consumerKey", true, "project area");
+        options.addOption("consumerSecret", true, "project area");
 
         CommandLineParser cliParser = new GnuParser();
 
@@ -53,6 +55,9 @@ public class DoorsClientCLI {
         String url = cmd.getOptionValue("url");
         String project = cmd.getOptionValue("project");
         String stdout = cmd.getOptionValue("stdout", "false");
+
+        String consumerKey = cmd.getOptionValue("consumerKey");
+        String consumerSecret = cmd.getOptionValue("consumerSecret");
 
         String envPass = System.getenv("DNG_PASSWORD");
         pass = cmd.getOptionValue("pass", "");
@@ -65,11 +70,16 @@ public class DoorsClientCLI {
         }
 
         try {
+            DoorsClient doors;
+            if (consumerKey != null && !consumerKey.isEmpty() && !consumerSecret.isEmpty()) {
+                doors = new DoorsClient(consumerKey, consumerSecret, user, pass, url, false);
+            } else {
+                doors = new DoorsClient(user, pass, url, project);
+            }
 
-            DoorsClient doors = new DoorsClient(user, pass, url, project);
             doors.setProject(project);
 
-            String type = "https://cae-jazz.jpl.nasa.gov/rm/types/_wrFbUVH1EeeZqqBXHGi26w";
+            String type = "https://cae-jazz.jpl.nasa.gov/rm/types/_wG6-UVH1EeeZqqBXHGi26w";
 
             Property[] properties = doors.getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "V&V Activity").getProperties();
 
