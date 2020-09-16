@@ -25,139 +25,57 @@ import org.eclipse.lyo.oslc4j.core.model.Link;
 import org.eclipse.lyo.oslc4j.core.model.Property;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class DoorsClientCLI {
 
     private static final Logger logger = Logger.getLogger(DoorsClientCLI.class.getName());
     private static String pass;
 
-    private static Map<String, Requirement> requirementCache = new HashMap<>();
-    private static Map<URI, ResourceShape> resourceShapeCache = new HashMap<>();
-
     public static void main(String[] args) throws ParseException {
-
+        Console console = System.console();
+        pass = new String(console.readPassword("Password: "));
 
         Options options = new Options();
 
+        options.addOption("consumer", true, "consumer key");
+        options.addOption("secret", true, "consumer secret");
         options.addOption("user", true, "username");
         options.addOption("url", true, "doors url");
         options.addOption("project", true, "project area");
-        options.addOption("stdout", true, "print to stdout");
-        options.addOption("pass", true, "Use stdin instead");
-        options.addOption("consumerKey", true, "project area");
-        options.addOption("consumerSecret", true, "project area");
+        options.addOption("requirement", true, "requirement");
+        options.addOption("resource", true, "resource");
 
         CommandLineParser cliParser = new GnuParser();
 
         CommandLine cmd = cliParser.parse(options, args);
 
+        if (!validateOptions(cmd)) {
+            System.out.println("Syntax:  java -jar <jar file> -action \"(create || read || update || delete)\" -consumer \"<consumerKey>\" -secret \"<consumerSecret>\" -user \"<username>\" -pass \"<password>\" -url \"<doors_url>\" -project \"<project_area>\" (-requirement <json> || <resourceUrl>)");
+            System.out.println("Example: java -jar target/doorsng-x.x.x.jar -action \"create\" -consumer \"CONSUMERKEY\" -secret \"CONSUMERSECRET\" -user \"JPLUSERNAME\" -pass \"JPLPASSWORD\" -url \"DOORSURL\" -project \"Test Project\" -requirement {\"title\":\"Requirement 01\", \"sysmlid\":\"123-456-678\"}");
+            return;
+        }
+
+        String consumer = cmd.getOptionValue("consumer");
+        String secret = cmd.getOptionValue("secret");
         String user = cmd.getOptionValue("user");
         String url = cmd.getOptionValue("url");
         String project = cmd.getOptionValue("project");
-        String stdout = cmd.getOptionValue("stdout", "false");
+        String requirement = cmd.getOptionValue("requirement");
 
-        String consumerKey = cmd.getOptionValue("consumerKey");
-        String consumerSecret = cmd.getOptionValue("consumerSecret");
-
-        String envPass = System.getenv("DNG_PASSWORD");
-        pass = cmd.getOptionValue("pass", "");
-
-        if (pass.isEmpty() && (envPass == null || envPass.isEmpty())) {
-            Console console = System.console();
-            pass = new String(console.readPassword("Password: "));
-        } else if (pass.isEmpty()) {
-            pass = envPass;
-        }
+        JSONObject response = new JSONObject();
 
         try {
-            DoorsClient doors;
-            if (consumerKey != null && !consumerKey.isEmpty() && !consumerSecret.isEmpty()) {
-                doors = new DoorsClient(consumerKey, consumerSecret, user, pass, url, false);
-            } else {
-                doors = new DoorsClient(user, pass, url, project);
-            }
 
+            DoorsClient doors = new DoorsClient(user, pass, url, project);
             doors.setProject(project);
 
-            String type = "https://cae-jazz.jpl.nasa.gov/rm/types/_wG6-UVH1EeeZqqBXHGi26w";
-
-            Property[] properties = doors.getShape(OSLCConstants.RM_REQUIREMENT_TYPE, "V&V Activity").getProperties();
-
-            OslcQueryParameters queryParams = new OslcQueryParameters();
-            String prefix = "rm=<http://www.ibm.com/xmlns/rdm/rdf/>";
-            String where = String.format("rm:ofType=<%s>", type);
-
-            queryParams.setSelect("*");
-            queryParams.setPrefix(prefix);
-            queryParams.setWhere(where);
-            OslcQueryResult results = doors.submitQuery(queryParams);
-
-            List<Map<String, Object>> reqs = new ArrayList<>();
-            int i = 0;
-            for (String resultsUrl : results.getMembersUrls()) {
-                Requirement current;
-                if (requirementCache.get(resultsUrl) == null) {
-                    current = doors.getRequirement(resultsUrl);
-                } else {
-                    current = requirementCache.get(resultsUrl);
-                }
-
-                if (current == null) {
-                    continue;
-                }
-
-                Map<String, Object> res = new HashMap<>();
-
-                res.put("id", current.getIdentifier());
-                res.put("Name", current.getTitle());
-                res.put("PrimaryText", current.getPrimaryText());
-                res.put("Created", current.getCreated());
-
-                ResourceShape resourceShape;
-                if (resourceShapeCache.get(current.getInstanceShape()) == null) {
-                    resourceShape = doors
-                        .getResource(ResourceShape.class, current.getInstanceShape());
-                } else {
-                    resourceShape = resourceShapeCache.get(current.getInstanceShape());
-                }
-
-                res.put("Artifact Type", resourceShape.getTitle());
-
-                List<String> creatorList = new ArrayList<>();
-                for (URI creator : current.getCreators()) {
-                    ClientResponse clientResponse = doors.getResponse(creator.toString());
-                    Person creatorPerson = clientResponse.getEntity(Person.class);
-                    creatorList.add(creatorPerson.getName());
-                }
-                res.put("Last Modified Date", current.getModified());
-                res.put("Last Modified By", creatorList.get(creatorList.size() - 1));
-                res.put("Created By", creatorList);
-                Link[] verifieds = current.getValidatedBy();
-                StringBuilder sb = new StringBuilder();
-                for (Link verified : verifieds) {
-                    if (sb.length() > 0) {
-                        sb.append(",");
-                    }
-                    sb.append(verified.getLabel());
-                }
-                if (sb.length() > 0) {
-                    res.put("Link:Verified or Validated By (<)", sb.toString());
-                }
-                res.put("Affected By", current.getAffectedBy());
-                res.put("Description", current.getDescription());
-
-                for (Property property : properties) {
-                    if (property.getTitle() != null) {
-                        String value = current.getCustomField(property.getPropertyDefinition());
-                        res.put(property.getTitle(), value != null ? value : "");
-                    }
-                }
-
-                reqs.add(res);
+            if (requirement != null) {
+                response.put("result", doors.getRequirement(requirement));
+            } else {
+                response.put("result", doors.getRequirements());
             }
 
-            JSONArray response = new JSONArray(reqs);
-            System.out.println(response.toString(4));
 
         } catch (Exception e) {
 
@@ -165,12 +83,26 @@ public class DoorsClientCLI {
 
         } finally {
 
-            if (stdout.equals("true")) {
-                System.out.println(stdout);
-            }
+            System.out.println(response);
 
         }
 
     }
 
+    private static boolean validateOptions(CommandLine cmd) {
+
+        String action = cmd.getOptionValue("action");
+
+        if (action == null || (
+            action != null && pass != null &&
+                cmd.getOptionValue("user") != null &&
+                cmd.getOptionValue("url") != null &&
+                cmd.getOptionValue("project") != null
+        )) {
+            return true;
+        }
+
+        return false;
+
+    }
 }
