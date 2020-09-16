@@ -2,12 +2,16 @@ package gov.nasa.jpl.mbee.doorsng;
 
 import gov.nasa.jpl.mbee.doorsng.model.Person;
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
+import java.io.BufferedWriter;
 import java.io.Console;
+import java.io.FileWriter;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,6 +35,9 @@ public class DoorsClientCLI {
 
     private static final Logger logger = Logger.getLogger(DoorsClientCLI.class.getName());
     private static String pass;
+
+    private static Map<String, Requirement> requirementCache = new HashMap<>();
+    private static Map<URI, ResourceShape> resourceShapeCache = new HashMap<>();
 
     public static void main(String[] args) throws ParseException {
         Console console = System.console();
@@ -71,9 +78,13 @@ public class DoorsClientCLI {
             doors.setProject(project);
 
             if (requirement != null) {
-                response.put("result", doors.getRequirement(requirement));
+                Set<Requirement> result = new HashSet<>();
+                result.add(doors.getRequirement(requirement));
+                response.put("result", result);
+                response.put("errors", doors.getErrors());
             } else {
                 response.put("result", doors.getRequirements());
+                response.put("errors", doors.getErrors());
             }
 
 
@@ -83,6 +94,7 @@ public class DoorsClientCLI {
 
         } finally {
 
+            saveFile("export.json", response.toString(4));
             System.out.println(response);
 
         }
@@ -104,5 +116,15 @@ public class DoorsClientCLI {
 
         return false;
 
+    }
+
+    private static void saveFile(String name, String contents) {
+        try {
+            BufferedWriter writer = new BufferedWriter(new FileWriter(name, true));
+            writer.append(contents);
+            writer.close();
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
+        }
     }
 }

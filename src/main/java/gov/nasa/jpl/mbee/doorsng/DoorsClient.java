@@ -77,6 +77,8 @@ public class DoorsClient {
     private static String queryCapability;
     private static String folderFactory;
 
+    private static Map<String, String> errors = new HashMap<>();
+
     private static String JSESSIONID;
 
     private static Map<String, URI> projectProperties = null;
@@ -784,9 +786,13 @@ public class DoorsClient {
 
                     if (response.getStatusCode() == HttpStatus.SC_OK) {
                         Requirement res = response.getEntity(Requirement.class);
-                        res.setResourceUrl(resultsUrl);
-                        res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
-                        req.add(res);
+                        if (res == null) {
+                            errors.put(resultsUrl, response.getEntity(String.class));
+                        } else {
+                            res.setResourceUrl(resultsUrl);
+                            res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+                            req.add(res);
+                        }
                     }
 
                 } catch (Exception e) {
@@ -807,6 +813,10 @@ public class DoorsClient {
 
         return req;
 
+    }
+
+    public Map<String, String> getErrors() {
+        return errors;
     }
 
     private static Folder processFolderQuery(ClientResponse response) throws IOException {
