@@ -1,35 +1,18 @@
 package gov.nasa.jpl.mbee.doorsng;
 
-import gov.nasa.jpl.mbee.doorsng.model.Person;
+import gov.nasa.jpl.mbee.doorsng.MmsAdapter.ElementFactory;
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
+import org.apache.commons.cli.*;
+import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
+import org.json.JSONObject;
+
 import java.io.BufferedWriter;
 import java.io.Console;
 import java.io.FileWriter;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-
-import org.apache.wink.client.ClientResponse;
-import org.eclipse.lyo.client.oslc.OSLCConstants;
-import org.eclipse.lyo.client.oslc.resources.OslcQueryParameters;
-import org.eclipse.lyo.client.oslc.resources.OslcQueryResult;
-import org.eclipse.lyo.oslc4j.core.model.Link;
-import org.eclipse.lyo.oslc4j.core.model.Property;
-import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 public class DoorsClientCLI {
 
@@ -41,7 +24,14 @@ public class DoorsClientCLI {
 
     public static void main(String[] args) throws ParseException {
         Console console = System.console();
-        pass = new String(console.readPassword("Password: "));
+
+        String envPass = System.getenv("DNG_PASSWORD");
+        if(envPass == null || envPass.isEmpty()) {
+            pass = new String(console.readPassword("Password: "));
+        }
+        else {
+            pass = envPass;
+        }
 
         Options options = new Options();
 
@@ -77,15 +67,35 @@ public class DoorsClientCLI {
             DoorsClient doors = new DoorsClient(user, pass, url, project);
             doors.setProject(project);
 
+            List<JSONObject> exports = new ArrayList<>();
+            Map<String, String> errors = new HashMap<>();
+
+            ElementFactory elementFactory = new ElementFactory("{project_id}");
+
             if (requirement != null) {
                 Set<Requirement> result = new HashSet<>();
-                result.add(doors.getRequirement(requirement));
-                response.put("result", result);
-                response.put("errors", doors.getErrors());
+
+                try {
+                    exports = doors.getRequirement(requirement).export(doors, elementFactory);
+                }
+                catch(Exception e) {
+                    errors.put(requirement, e.getMessage());
+                }
             } else {
-                response.put("result", doors.getRequirements());
-                response.put("errors", doors.getErrors());
+                for(Requirement req: doors.getRequirements()) {
+                    try {
+                        exports.addAll(req.export(doors, elementFactory));
+                    }
+                    catch(Exception e) {
+                        errors.put(req.getIdentifier(), e.getMessage());
+                    }
+                }
+
+                errors.putAll(doors.getErrors());
             }
+
+            response.put("result", exports);
+            response.put("errors", errors);
 
 
         } catch (Exception e) {
@@ -95,7 +105,7 @@ public class DoorsClientCLI {
         } finally {
 
             saveFile("export.json", response.toString(4));
-            System.out.println(response);
+            System.out.println(response.toString(4));
 
         }
 
