@@ -62,13 +62,13 @@ public class DoorsClientCLI {
 
         JSONObject response = new JSONObject();
 
+        List<JSONObject> exports = new ArrayList<>();
+        Map<String, String> errors = new HashMap<>();
+
         try {
 
             DoorsClient doors = new DoorsClient(user, pass, url, project);
             doors.setProject(project);
-
-            List<JSONObject> exports = new ArrayList<>();
-            Map<String, String> errors = new HashMap<>();
 
             ElementFactory elementFactory = new ElementFactory("{project_id}");
 
@@ -94,9 +94,10 @@ public class DoorsClientCLI {
                 errors.putAll(doors.getErrors());
             }
 
-            response.put("result", exports);
-            response.put("errors", errors);
-
+            response.put("elements", exports);
+            JSONObject errorReport = new JSONObject();
+            errorReport.put("errors", errors);
+            System.err.println(errorReport);
 
         } catch (Exception e) {
 
@@ -106,6 +107,10 @@ public class DoorsClientCLI {
 
             saveFile("export.json", response.toString(4));
             System.out.println(response.toString(4));
+            
+            if(errors.size() >= 1) {
+                System.exit(1);
+            }
 
         }
 
