@@ -1,36 +1,13 @@
 package gov.nasa.jpl.mbee.doorsng;
 
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsFormAuthClient;
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsOAuthClient;
 import gov.nasa.jpl.mbee.doorsng.lib.DoorsOslcClient;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.URLDecoder;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import org.apache.http.Header;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpStatus;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
+import gov.nasa.jpl.mbee.doorsng.lib.DoorsRootServicesHelper;
+import gov.nasa.jpl.mbee.doorsng.model.Folder;
+import gov.nasa.jpl.mbee.doorsng.model.Requirement;
+import gov.nasa.jpl.mbee.doorsng.model.RequirementCollection;
+import org.apache.http.*;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -38,9 +15,7 @@ import org.apache.http.client.params.HttpClientParams;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
-import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.*;
 import org.apache.wink.client.ClientResponse;
 import org.eclipse.lyo.client.exception.ResourceNotFoundException;
 import org.eclipse.lyo.client.oslc.OAuthRedirectException;
@@ -58,12 +33,17 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import gov.nasa.jpl.mbee.doorsng.model.Requirement;
-import gov.nasa.jpl.mbee.doorsng.model.RequirementCollection;
-import gov.nasa.jpl.mbee.doorsng.model.Folder;
-import gov.nasa.jpl.mbee.doorsng.lib.DoorsOAuthClient;
-import gov.nasa.jpl.mbee.doorsng.lib.DoorsFormAuthClient;
-import gov.nasa.jpl.mbee.doorsng.lib.DoorsRootServicesHelper;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.*;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class DoorsClient {
@@ -172,6 +152,15 @@ public class DoorsClient {
     public <T extends AbstractResource> T getResource(Class<T> type, URI resourceUrl) {
         ClientResponse response = getResponse(resourceUrl.toString());
         return response.getStatusCode() == HttpStatus.SC_OK ? response.getEntity(type) : null;
+    }
+
+
+    public Model prepareModel(URI subject) {
+        List<RDFNode> objects = new ArrayList<>();
+        Model model = ModelFactory.createDefaultModel();
+        String rdf = getResponse(subject.toString()).getEntity(String.class);
+        model.read(new ByteArrayInputStream(rdf.getBytes()), null, "RDF/XML");
+        return model;
     }
 
     public Requirement getRequirement(String resourceUrl) {

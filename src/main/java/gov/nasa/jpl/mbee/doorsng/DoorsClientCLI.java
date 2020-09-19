@@ -59,6 +59,7 @@ public class DoorsClientCLI {
         String url = cmd.getOptionValue("url");
         String project = cmd.getOptionValue("project");
         String requirement = cmd.getOptionValue("requirement");
+        String mmsProjectId = cmd.getOptionValue("mms-project");
 
         JSONObject response = new JSONObject();
 
@@ -70,21 +71,24 @@ public class DoorsClientCLI {
             DoorsClient doors = new DoorsClient(user, pass, url, project);
             doors.setProject(project);
 
-            ElementFactory elementFactory = new ElementFactory("{project_id}");
+            ElementFactory elementFactory = new ElementFactory(mmsProjectId, url);
 
             if (requirement != null) {
                 Set<Requirement> result = new HashSet<>();
 
                 try {
-                    exports = doors.getRequirement(requirement).export(doors, elementFactory);
+                    exports = doors.getRequirement(requirement).export(doors, elementFactory, resourceShapeCache);
                 }
                 catch(Exception e) {
                     errors.put(requirement, e.getMessage());
                 }
             } else {
-                for(Requirement req: doors.getRequirements()) {
+                Set<Requirement> requirements = doors.getRequirements();
+                System.err.println(" ----- got all requirements -----");
+
+                for(Requirement req: requirements) {
                     try {
-                        exports.addAll(req.export(doors, elementFactory));
+                        exports.addAll(req.export(doors, elementFactory, resourceShapeCache));
                     }
                     catch(Exception e) {
                         errors.put(req.getIdentifier(), e.getMessage());
@@ -107,7 +111,7 @@ public class DoorsClientCLI {
 
             saveFile("export.json", response.toString(4));
             System.out.println(response.toString(4));
-            
+
             if(errors.size() >= 1) {
                 System.exit(1);
             }

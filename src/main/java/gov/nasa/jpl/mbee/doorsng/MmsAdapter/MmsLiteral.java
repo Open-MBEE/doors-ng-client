@@ -12,7 +12,7 @@ public abstract class MmsLiteral extends MmsEntity {
     @Override
     public void init() {
         super.init();
-        serialization
+        this
             .put("typeId", JSONObject.NULL)
             ;
     }

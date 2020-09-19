@@ -1,5 +1,6 @@
 package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -9,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class MmsClass extends MmsElement {
     protected String name;
-    protected ArrayList<MmsAttribute> attributes = new ArrayList<>();
+    protected ArrayList<MmsEntity> baggage = new ArrayList<>();
 
     public MmsClass(ElementFactory factory, String id, String name) {
         super(factory, id, factory.getProjectId() + "_pm");
@@ -19,7 +20,7 @@ public class MmsClass extends MmsElement {
     @Override
     public void init() {
         super.init();
-        serialization
+        this
             .put("elementImportIds", Collections.EMPTY_LIST)
             .put("packageImportIds", Collections.EMPTY_LIST)
             .put("templateBindingIds", Collections.EMPTY_LIST)
@@ -28,14 +29,14 @@ public class MmsClass extends MmsElement {
             .put("collaborationUseIds", Collections.EMPTY_LIST)
             .put("generalizationIds", Collections.EMPTY_LIST)
             .put("powertypeExtentIds", Collections.EMPTY_LIST)
+            .put("isAbstract", false)
+            .put("isFinalSpecialization", false)
             .put("redefinedClassifierIds", Collections.EMPTY_LIST)
             .put("substitutionIds", Collections.EMPTY_LIST)
             .put("classifierBehaviorId", JSONObject.NULL)
             .put("interfaceRealizationIds", Collections.EMPTY_LIST)
             .put("ownedOperationIds", Collections.EMPTY_LIST)
-            .put("isAbstract", false)
             .put("isActive", false)
-            .put("isFinalSpecialization", false)
             ;
     }
 
@@ -51,9 +52,9 @@ public class MmsClass extends MmsElement {
 
     @Override
     public JSONObject getSerialization() {
-        serialization
-            .put("ownedAttributeIds", attributes.stream()
-                .map(attribute -> attribute.getId())
+        this
+            .put("ownedAttributeIds", baggage.stream()
+                .map(entity -> entity.getId())
                 .collect(Collectors.toList()))
             ;
 
@@ -64,16 +65,23 @@ public class MmsClass extends MmsElement {
         List<JSONObject> list = new ArrayList<>();
 
         list.add(getSerialization());
-        list.addAll(attributes.stream()
-            .map(attribute -> attribute.getSerialization())
+        list.addAll(baggage.stream()
+            .map(entity -> entity.getSerialization())
             .collect(Collectors.toList()));
 
         return list;
     }
 
-    public MmsClass addStringProperty(String key, String label, String value) {
-        MmsAttribute attribute = new MmsAttribute(factory, id+"_"+key, id, label, MmsAttribute.STRING_TYPE_ID);
+    private MmsAttribute addAttribute(String key, String label, String typeId) {
+        String keyId = DigestUtils.sha256Hex(id+"_"+key);
+        MmsAttribute attribute = new MmsAttribute(factory, keyId, id, label, typeId);
         attribute.init();
+        baggage.add(attribute);
+        return attribute;
+    }
+
+    public MmsClass addStringProperty(String key, String label, String value) {
+        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.STRING_TYPE_ID);
 
         attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
             @Override
@@ -84,19 +92,15 @@ public class MmsClass extends MmsElement {
             @Override
             public void init() {
                 super.init();
-                serialization
-                    .put("value", value)
-                    ;
+                this.put("value", value);
             }
         });
 
-        attributes.add(attribute);
         return this;
     }
 
     public MmsClass addIntegerProperty(String key, String label, int value) {
-        MmsAttribute attribute = new MmsAttribute(factory, id+"_"+key, id, label, MmsAttribute.INTEGER_TYPE_ID);
-        attribute.init();
+        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.INTEGER_TYPE_ID);
 
         attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
             @Override
@@ -107,19 +111,15 @@ public class MmsClass extends MmsElement {
             @Override
             public void init() {
                 super.init();
-                serialization
-                    .put("value", value)
-                    ;
+                this.put("value", value);
             }
         });
 
-        attributes.add(attribute);
         return this;
     }
 
     public MmsClass addRealProperty(String key, String label, double value) {
-        MmsAttribute attribute = new MmsAttribute(factory, id+"_"+key, id, label, MmsAttribute.REAL_TYPE_ID);
-        attribute.init();
+        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.REAL_TYPE_ID);
 
         attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
             @Override
@@ -130,19 +130,15 @@ public class MmsClass extends MmsElement {
             @Override
             public void init() {
                 super.init();
-                serialization
-                    .put("value", value)
-                    ;
+                this.put("value", value);
             }
         });
 
-        attributes.add(attribute);
         return this;
     }
 
     public MmsClass addBooleanProperty(String key, String label, boolean value) {
-        MmsAttribute attribute = new MmsAttribute(factory, id+"_"+key, id, label, MmsAttribute.BOOLEAN_TYPE_ID);
-        attribute.init();
+        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.BOOLEAN_TYPE_ID);
 
         attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
             @Override
@@ -153,13 +149,42 @@ public class MmsClass extends MmsElement {
             @Override
             public void init() {
                 super.init();
+                this.put("value", value);
+            }
+        });
+
+        return this;
+    }
+
+    public MmsClass addNullProperty(String key, String label) {
+        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.NULL_TYPE_ID);
+
+        attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
+            @Override
+            public String getType() {
+                return "LiteralNull";
+            }
+
+            @Override
+            public void init() {
+                super.init();
                 serialization
-                    .put("value", value)
+                    .remove("value")
                     ;
             }
         });
 
-        attributes.add(attribute);
+        return this;
+    }
+
+    public MmsClass addRelation(String key, String label, String targetId) {
+        String associationId = DigestUtils.sha256Hex("association:"+key+":"+(id.compareTo(targetId) < 0? id+"."+targetId: targetId+"."+id));
+        MmsAssociation association = new MmsAssociation(factory, associationId, label, targetId);
+        association.init();
+        baggage.add(association);
+
+        MmsAttribute attribute = addAttribute(key, label, targetId);
+        attribute.setAssociationId(associationId);
         return this;
     }
 }

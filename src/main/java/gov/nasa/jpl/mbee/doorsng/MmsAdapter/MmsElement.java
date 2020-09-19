@@ -10,7 +10,7 @@ public abstract class MmsElement extends MmsEntity {
     @Override
     public void init() {
         super.init();
-        serialization
+        this
             .put("isLeaf", false)
             ;
     }

@@ -44,19 +44,19 @@ public abstract class MmsEntity {
     public void init() {
         this.initialized = true;
         this
-            .put("id", this.getId())
-            .put("type", this.getType())
-            .put("visibility", this.getVisibility())
-            .put("ownerId", this.getOwnerId())
-            .put("name", this.getName())
             .put("_appliedStereotypeIds", Collections.EMPTY_LIST)
             .put("documentation", "")
+            .put("type", this.getType())
+            .put("id", this.getId())
             .put("mdExtensionsIds", Collections.EMPTY_LIST)
+            .put("ownerId", this.getOwnerId())
             .put("syncElementId", JSONObject.NULL)
             .put("appliedStereotypeInstanceId", JSONObject.NULL)
             .put("clientDependencyIds", Collections.EMPTY_LIST)
             .put("supplierDependencyIds", Collections.EMPTY_LIST)
+            .put("name", this.getName())
             .put("nameExpression", JSONObject.NULL)
+            .put("visibility", this.getVisibility())
             .put("templateParameterId", JSONObject.NULL)
             ;
     }
