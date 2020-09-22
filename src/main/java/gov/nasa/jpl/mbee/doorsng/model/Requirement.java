@@ -278,7 +278,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
                         requirement.addRelation(propertyId, propertyLabel, targetId);
                     }
                     // these URLs don't support RDF, can't get any titles for them
-                    else if(path.startsWith("/rm/process/") || path.startsWith("/rm/cm/") || path.startsWith("/rm/types")) {
+                    else if(path.startsWith("/rm/process/") || path.startsWith("/rm/cm/") || path.startsWith("/rm/types") || path.startsWith("/rm/accessControl/")) {
                         continue;
                     }
                     // other
