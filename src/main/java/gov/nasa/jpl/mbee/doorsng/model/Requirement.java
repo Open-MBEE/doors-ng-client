@@ -78,7 +78,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
             System.err.println("\t - titled thing: \"" + title + "\"");
             return title;
         } else {
-            System.err.println("\t - no titles: \"" + doors.getResponse(resource.toString()).getEntity(String.class) + "\"");
+            System.err.println("\tNo titles for <"+resource.toString()+">: \"" + doors.getResponse(resource.toString()).getEntity(String.class) + "\"");
             return NULL_TITLE_POINTER;
         }
     }
@@ -278,7 +278,8 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
                         requirement.addRelation(propertyId, propertyLabel, targetId);
                     }
                     // these URLs don't support RDF, can't get any titles for them
-                    else if(path.startsWith("/rm/process/") || path.startsWith("/rm/cm/") || path.startsWith("/rm/types") || path.startsWith("/rm/accessControl/")) {
+                    else if(path.startsWith("/rm/process/") || path.startsWith("/rm/cm/") || path.startsWith("/rm/accessControl/")) {
+                        System.err.println("Skipping <"+valueUri.toString()+">");
                         continue;
                     }
                     // other
@@ -333,7 +334,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
                         // local
                         if (valueUri.getAuthority().equals(factory.getAuthority())) {
                             // requirement
-                            if (valueUri.getPath().startsWith("/rm/resources/")) {
+                            if(valueUri.getPath().startsWith("/rm/resources/")) {
                                 Requirement link = doors.getResource(Requirement.class, valueUri);
 
                                 System.err.println("\t - requirement: " + valueUri.toString());
