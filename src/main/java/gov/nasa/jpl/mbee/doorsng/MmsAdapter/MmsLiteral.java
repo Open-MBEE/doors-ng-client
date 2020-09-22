@@ -3,10 +3,15 @@ package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
 import org.json.JSONObject;
 
 public abstract class MmsLiteral extends MmsEntity {
-    MmsAttribute attribute;
-    public MmsLiteral(ElementFactory factory, MmsAttribute attribute) {
-        super(factory, attribute.getId()+"_value", attribute.getId());
-        this.attribute = attribute;
+    MmsEntity owner;
+    public MmsLiteral(ElementFactory factory, MmsEntity owner) {
+        super(factory, owner.getId()+"_value", owner.getId());
+        this.owner = owner;
+    }
+
+    public MmsLiteral(ElementFactory factory, MmsEntity owner, String idMod) {
+        super(factory, owner.getId()+"_value_"+idMod, owner.getId());
+        this.owner = owner;
     }
 
     @Override

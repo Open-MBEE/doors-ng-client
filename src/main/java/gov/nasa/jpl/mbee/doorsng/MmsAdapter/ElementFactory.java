@@ -26,4 +26,15 @@ public class ElementFactory {
         return authority;
     }
 
+
+    public String localResourceUriToElementId(URI requirement) throws RuntimeException {
+        if(!requirement.getAuthority().equals(getAuthority())) {
+            throw new RuntimeException(String.format("Cannot convert URI <%s> to element id; resource is not on same authority", requirement.toString()));
+        }
+
+        return requirement.getPath().replace('/', '_');
+//        String path = requirement.getPath();
+//        return path.substring(path.lastIndexOf("/")+1);
+    }
+
 }

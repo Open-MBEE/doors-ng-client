@@ -1,9 +1,12 @@
 package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.eclipse.lyo.oslc4j.core.model.Link;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -81,6 +84,8 @@ public class MmsClass extends MmsElement {
     }
 
     public MmsClass addStringProperty(String key, String label, String value) {
+        if(value == null) return addNullProperty(key, label);
+
         MmsAttribute attribute = addAttribute(key, label, MmsAttribute.STRING_TYPE_ID);
 
         attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
@@ -177,6 +182,56 @@ public class MmsClass extends MmsElement {
         return this;
     }
 
+    public MmsClass addStringArrayProperty(String key, String label, List<String> values) {
+        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.STRING_TYPE_ID);
+
+        JSONArray valuesArray = new JSONArray();
+
+        MmsLiteral container = new MmsLiteral(factory, attribute) {
+            @Override
+            public String getType() {
+                return null;
+            }
+
+            @Override
+            public void init() {
+                super.init();
+                serialization
+                    .put("symbol", "")
+                    .put("operand", valuesArray)
+                    .remove("value")
+                    ;
+            }
+        };
+
+        attribute.setDefaultValue(container);
+
+        for(int index=0; index<values.size(); index++) {
+            String value = values.get(index);
+
+            MmsLiteral valueEntity = new MmsLiteral(factory, container, index+"") {
+                @Override
+                public String getType() {
+                    return null;
+                }
+
+                @Override
+                public void init() {
+                    super.init();
+                    this
+                        .put("value", value)
+                        ;
+                }
+            };
+
+            valueEntity.init();
+
+            valuesArray.put(valueEntity.getSerialization());
+        }
+
+        return this;
+    }
+
     public MmsClass addRelation(String key, String label, String targetId) {
         String associationId = DigestUtils.sha256Hex("association:"+key+":"+(id.compareTo(targetId) < 0? id+"."+targetId: targetId+"."+id));
         MmsAssociation association = new MmsAssociation(factory, associationId, label, targetId);
@@ -186,5 +241,11 @@ public class MmsClass extends MmsElement {
         MmsAttribute attribute = addAttribute(key, label, targetId);
         attribute.setAssociationId(associationId);
         return this;
+    }
+
+    public MmsClass addLinks(String key, String label, Link[] links) {
+        return addStringArrayProperty(key, label, Arrays.stream(links)
+            .map(link -> factory.localResourceUriToElementId(link.getValue()))
+            .collect(Collectors.toList()));
     }
 }

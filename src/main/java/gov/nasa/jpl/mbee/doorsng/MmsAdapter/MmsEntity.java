@@ -63,7 +63,7 @@ public abstract class MmsEntity {
 
     public JSONObject getSerialization() throws IllegalStateException {
         if(!this.initialized) {
-            throw new IllegalStateException("MmsEntity#init() was never called");
+            throw new IllegalStateException("MmsEntity#init() was never called on "+this.getClass().getName());
         }
         return serialization;
     }
