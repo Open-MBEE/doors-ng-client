@@ -110,7 +110,7 @@ public class DoorsClientCLI {
         } finally {
 
             saveFile("export.json", response.toString(4));
-            System.out.println(response.toString(4));
+//            System.out.println(response.toString(4));
 
             if(errors.size() >= 1) {
                 System.exit(1);

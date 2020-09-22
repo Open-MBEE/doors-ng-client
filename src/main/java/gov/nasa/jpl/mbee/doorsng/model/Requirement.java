@@ -31,6 +31,21 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
     private static final String FOAF_NAME = "http://xmlns.com/foaf/0.1/name";
     private static final String NULL_TITLE_POINTER = "";
 
+    private String parseSimpleTitle(Model model, Resource subject) {
+        Statement dcTitle = model.getProperty(subject, model.createProperty(DC_TITLE));
+        if (dcTitle != null) {
+            return dcTitle.getString();
+        }
+        else {
+            Statement rdfsLabel = model.getProperty(subject, model.createProperty(RDFS_LABEL));
+            if (rdfsLabel != null) {
+                return rdfsLabel.getString();
+            }
+        }
+
+        return null;
+    }
+
     private String fetchResourceTitle(DoorsClient doors, ElementFactory factory, URI resource) {
         // remote URI or non-fetcahble local URI
         if(!resource.getAuthority().equals(factory.getAuthority()) || !resource.getPath().startsWith("/rm/")) {
@@ -47,27 +62,17 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
             // person
             if (type.equals(FOAF_PERSON)) {
-                // TODO: make nested attributes
+                // TODO: make nested attributes?
                 Statement name = model.getProperty(subject, model.createProperty(FOAF_NAME));
                 if(name != null) {
                     return name.getString();
                 }
 
-                return null;
+                // continue onto title
             }
         }
 
-        String title = null;
-
-        Statement dcTitle = model.getProperty(subject, model.createProperty(DC_TITLE));
-        if (dcTitle != null) {
-            title = dcTitle.getString();
-        } else {
-            Statement rdfsLabel = model.getProperty(subject, model.createProperty(RDFS_LABEL));
-            if (rdfsLabel != null) {
-                title = rdfsLabel.getString();
-            }
-        }
+        String title = parseSimpleTitle(model, subject);
 
         if (title != null) {
             System.err.println("\t - titled thing: \"" + title + "\"");
@@ -181,11 +186,11 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
         // basic properties
         requirement
+            .addStringProperty("about", "About", getAbout().toString())
             .addStringProperty("shape", "Shape", fetchResourceTitle(doors, factory, getInstanceShape()))
             .addStringProperty("identifier", "Identifier", getIdentifier())
             .addStringProperty("description", "Description", getDescription())
             .addStringProperty("primaryText", "Primary Text", getPrimaryText())
-            .addStringProperty("about", "About", getAbout().toString())
             .addStringProperty("created", "Date Created", getCreated().toString())
             .addStringProperty("modified", "Date Last Modified", getModified().toString())
             .addLinks("affectedBy", "Affected By", getAffectedBy())
@@ -203,6 +208,9 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
             .addLinks("trackedBy", "Tracked By", getTrackedBy())
             .addLinks("validatedBy", "Validated By", getValidatedBy())
             ;
+
+        // add subjects
+        requirement.addStringArrayProperty("subjects", "Subjects", Arrays.stream(getSubjects()).collect(Collectors.toList()));
 
         // add types (use fragment part of IRI for name)
         requirement.addStringArrayProperty("types", "Types", getTypes().stream()
@@ -248,7 +256,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
             // verbose debugging
 //            System.err.println("["+propertyUri.toString()+" ==> "+valueObject.toString()+"]");
-            System.err.println(String.format("~~ (%s) \"%s\" <%s>", valueObject == null? "null": valueObject.getClass().getName(), propertyLabel, propertyUri));
+            System.err.printf("~~ (%s) \"%s\" <%s>%n", valueObject == null? "null": valueObject.getClass().getName(), propertyLabel, propertyUri);
 
             if(valueObject instanceof String) {
                 requirement.addStringProperty(propertyId, propertyLabel, (String) valueObject);
@@ -301,80 +309,50 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
                 requirement.addStringProperty(propertyId, propertyLabel, ((Date) valueObject).toString());
             }
             else if(valueObject instanceof ArrayList) {
-                // TODO: check list
-                ArrayList<URI> itemObjects = (ArrayList) valueObject;
-                if(itemObjects.size() > 0) {
-                    itemObjects.get(0);
+                ArrayList<Object> itemObjects = (ArrayList) valueObject;
+
+                // empty list
+                if(itemObjects.size() == 0) {
+                    requirement.addStringArrayProperty(propertyId, propertyLabel, Collections.EMPTY_LIST);
+                    continue;
                 }
 
-                ArrayList<String> itemStrings = new ArrayList<>();
+                // URIs
+                if(itemObjects.get(0) instanceof URI) {
+                    ArrayList<URI> itemUris = (ArrayList) valueObject;
+                    ArrayList<String> itemStrings = new ArrayList<>();
 
-                for(URI valueUri: itemObjects) {
-//                    System.err.println("\t"+(item.getClass().getName())+" => "+item.toString());
+                    // each item
+                    for (URI valueUri : itemUris) {
+                        // local
+                        if (valueUri.getAuthority().equals(factory.getAuthority())) {
+                            // requirement
+                            if (valueUri.getPath().startsWith("/rm/resources/")) {
+                                Requirement link = doors.getResource(Requirement.class, valueUri);
 
-                    // local
-                    if(valueUri.getAuthority().equals(factory.getAuthority())) {
-                        // requirement
-                        if (valueUri.getPath().startsWith("/rm/resources/")) {
-                            Requirement link = doors.getResource(Requirement.class, valueUri);
+                                System.err.println("\t - requirement: " + valueUri.toString());
 
-                            System.err.println("\t - requirement: " + valueUri.toString());
-
-                            String targetId = DigestUtils.sha256Hex(valueUri.toString());
-//                            requirement.addRelation(propertyId, propertyLabel, targetId);
-                            itemStrings.add(targetId);
-                            continue;
-                        }
-                        // other
-                        else {
-                            Model model = doors.prepareModel(valueUri);
-                            Resource subject = model.createResource(valueUri.toString());
-
-//                            // typed thing
-//                            Statement typed = model.getProperty(subject, model.createProperty(RDF_TYPE));
-//                            if (typed != null) {
-//                                String type = typed.getObject().asResource().toString();
-//
-//                                // person
-//                                if (type.equals(FOAF_PERSON)) {
-//                                    // TODO: make nested attributes
-//                                    Statement name = model.getProperty(subject, model.createProperty(FOAF_NAME));
-//                                    if(name != null) {
-//                                        requirement.addStringProperty(propertyId, propertyLabel, name.getString());
-//                                    }
-//                                    continue;
-//                                }
-//                            }
-
-                            String title = null;
-
-                            Statement dcTitle = model.getProperty(subject, model.createProperty(DC_TITLE));
-                            if (dcTitle != null) {
-                                title = dcTitle.getString();
-                            } else {
-                                Statement rdfsLabel = model.getProperty(subject, model.createProperty(RDFS_LABEL));
-                                if (rdfsLabel != null) {
-                                    title = rdfsLabel.getString();
-                                }
+                                String targetId = DigestUtils.sha256Hex(valueUri.toString());
+                                itemStrings.add(targetId);
+                                continue;
                             }
+                            // other
+                            else {
+                                String title = fetchResourceTitle(doors, factory, valueUri);
 
-                            if (title != null) {
-                                System.err.println("\t - titled thing: \"" + title + "\"");
-//                                requirement.addStringProperty(propertyId, propertyLabel, title);
                                 itemStrings.add(title);
-                            } else {
-                                System.err.println("\t - no titles: \"" + doors.getResponse(valueUri.toString()).getEntity(String.class) + "\"");
-//                                requirement.addNullProperty(propertyId, propertyLabel);
+                                continue;
                             }
-
-                            continue;
                         }
+
+                        itemStrings.add(valueUri.toString());
                     }
 
-                    itemStrings.add(valueUri.toString());
+                    requirement.addStringArrayProperty(propertyId, propertyLabel, itemStrings);
                 }
-
-                requirement.addStringArrayProperty(propertyId, propertyLabel, itemStrings);
+                else {
+                    throw new RuntimeException(String.format("Encountered ArrayList<%s> value type for property \"%s\" <%s>", itemObjects.get(0).getClass().getName(), propertyLabel, propertyUri));
+                }
             }
             else if(valueObject == null) {
                 throw new RuntimeException(String.format("Encountered null value type for property \"%s\" <%s>", propertyLabel, propertyUri));
