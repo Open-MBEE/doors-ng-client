@@ -11,6 +11,8 @@ import java.io.Console;
 import java.io.FileWriter;
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -62,7 +64,7 @@ public class DoorsClientCLI {
         String requirement = cmd.getOptionValue("requirement");
         String mmsProjectId = cmd.getOptionValue("mms-project");
 
-        JSONObject response = new JSONObject();
+        JSONObject export = new JSONObject();
 
         List<JSONObject> exports = new ArrayList<>();
         Map<String, String> errors = new HashMap<>();
@@ -84,21 +86,35 @@ public class DoorsClientCLI {
                     errors.put(requirement, e.getMessage());
                 }
             } else {
-                for(Future<Requirement> future: doors.getRequirementsFutures(32)) {
-                    Requirement req = future.get();
+                ExecutorService pool = Executors.newFixedThreadPool(32);
 
-                    try {
-                        exports.addAll(req.export(doors, elementFactory, resourceShapeCache));
-                    }
-                    catch(Exception e) {
-                        errors.put(req.getIdentifier(), e.getMessage());
-                    }
+                List<Future<Requirement>> futures = new ArrayList<>();
+                List<JSONObject> finalExports = exports;
+
+                for(Future<Requirement> future: doors.getRequirementsFutures(32)) {
+                    pool.submit(() -> {
+                        Requirement req = null;
+                        try {
+                            req = future.get();
+                            finalExports.addAll(req.export(doors, elementFactory, resourceShapeCache));
+                        }
+                        catch(Exception e) {
+                            if(req != null) {
+                                errors.put(req.getIdentifier(), e.getMessage());
+                            }
+                            else {
+                                logger.log(Level.SEVERE, e.getMessage(), e);
+                            }
+                        }
+                    });
                 }
+
+                pool.shutdown();
 
                 errors.putAll(doors.getErrors());
             }
 
-            response.put("elements", exports);
+            export.put("elements", exports);
             JSONObject errorReport = new JSONObject();
             errorReport.put("errors", errors);
             System.err.println(errorReport);
@@ -109,7 +125,7 @@ public class DoorsClientCLI {
 
         } finally {
 
-            saveFile("export.json", response.toString(4));
+            saveFile("export.json", export.toString(4));
 //            System.out.println(response.toString(4));
 
             if(errors.size() >= 1) {
