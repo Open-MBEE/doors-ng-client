@@ -96,7 +96,9 @@ public class DoorsClientCLI {
                         Requirement req = null;
                         try {
                             req = future.get();
-                            finalExports.addAll(req.export(doors, elementFactory, resourceShapeCache));
+
+                            // write ND-JSON stream to stdout
+                            System.out.println(req.export(doors, elementFactory, resourceShapeCache).toString());
                         }
                         catch(Exception e) {
                             if(req != null) {

@@ -266,14 +266,20 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
                 System.err.println("\tTesting <"+valueUri.toString()+">");
                 // local
                 if(valueUri.getAuthority().equals(factory.getAuthority())) {
-                    // requirement
-                    if (valueUri.getPath().startsWith("/rm/resources/")) {
+                    String path = valueUri.getPath();
+
+                    // artifact
+                    if(path.startsWith("/rm/resources/")) {
                         Requirement link = doors.getResource(Requirement.class, valueUri);
 
                         System.err.println("\t - requirement: " + valueUri.toString());
 
                         String targetId = DigestUtils.sha256Hex(valueUri.toString());
                         requirement.addRelation(propertyId, propertyLabel, targetId);
+                    }
+                    // these URLs don't support RDF, can't get any titles for them
+                    else if(path.startsWith("/rm/process/") || path.startsWith("/rm/cm/") || path.startsWith("/rm/types")) {
+                        continue;
                     }
                     // other
                     else {
