@@ -15,7 +15,10 @@ import org.apache.http.client.params.HttpClientParams;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
-import org.apache.jena.rdf.model.*;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
 import org.apache.wink.client.ClientResponse;
 import org.eclipse.lyo.client.exception.ResourceNotFoundException;
 import org.eclipse.lyo.client.oslc.OAuthRedirectException;
@@ -40,6 +43,9 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -239,6 +245,15 @@ public class DoorsClient {
         OslcQueryResult result = query.submit();
 
         return processRequirements(result);
+
+    }
+
+    public List<Future<Requirement>> getRequirementsFutures(int nThreads) {
+
+        OslcQuery query = new OslcQuery(client, queryCapability);
+        OslcQueryResult result = query.submit();
+
+        return processRequirementsInParallel(result, nThreads);
 
     }
 
@@ -802,6 +817,53 @@ public class DoorsClient {
 
         return req;
 
+    }
+
+    private static List<Future<Requirement>> processRequirementsInParallel(OslcQueryResult result, int nThreads) {
+        ExecutorService pool = Executors.newFixedThreadPool(nThreads);
+
+        List<Future<Requirement>> futures = new ArrayList<>();
+
+        do {
+            for(String resultsUrl: result.getMembersUrls()) {
+                futures.add(pool.submit(() -> {
+                    ClientResponse response = null;
+
+                    logger.info("Getting Requirement: " + resultsUrl);
+
+                    try {
+                        response = client.getResource(resultsUrl, OSLCConstants.CT_RDF);
+
+                        if(response.getStatusCode() == HttpStatus.SC_OK) {
+                            Requirement res = response.getEntity(Requirement.class);
+                            if(res == null) {
+                                errors.put(resultsUrl, response.getEntity(String.class));
+                            }
+                            else {
+                                res.setResourceUrl(resultsUrl);
+                                res.setEtag(response.getHeaders().getFirst(OSLCConstants.ETAG));
+                                return res;
+                            }
+                        }
+
+                    }
+                    catch (Exception e) {
+                        logger.log(Level.SEVERE, e.getMessage(), e);
+                    }
+
+                    return null;
+                }));
+            }
+
+            if(result.hasNext()) {
+                result = result.next();
+            }
+            else {
+                break;
+            }
+        } while(true);
+
+        return futures;
     }
 
     public Map<String, String> getErrors() {

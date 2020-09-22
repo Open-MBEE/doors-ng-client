@@ -11,6 +11,7 @@ import java.io.Console;
 import java.io.FileWriter;
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -83,10 +84,9 @@ public class DoorsClientCLI {
                     errors.put(requirement, e.getMessage());
                 }
             } else {
-                Set<Requirement> requirements = doors.getRequirements();
-                System.err.println(" ----- got all requirements -----");
+                for(Future<Requirement> future: doors.getRequirementsFutures(32)) {
+                    Requirement req = future.get();
 
-                for(Requirement req: requirements) {
                     try {
                         exports.addAll(req.export(doors, elementFactory, resourceShapeCache));
                     }
