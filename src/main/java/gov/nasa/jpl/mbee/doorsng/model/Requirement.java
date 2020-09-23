@@ -3,7 +3,6 @@ package gov.nasa.jpl.mbee.doorsng.model;
 import gov.nasa.jpl.mbee.doorsng.DoorsClient;
 import gov.nasa.jpl.mbee.doorsng.MmsAdapter.ElementFactory;
 import gov.nasa.jpl.mbee.doorsng.MmsAdapter.MmsClass;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.Statement;
@@ -274,7 +273,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
                         System.err.println("\t - requirement: " + valueUri.toString());
 
-                        String targetId = DigestUtils.sha256Hex(valueUri.toString());
+                        String targetId = factory.localResourceUriToElementId(valueUri);
                         requirement.addRelation(propertyId, propertyLabel, targetId);
                     }
                     // these URLs don't support RDF, can't get any titles for them
@@ -339,7 +338,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
                                 System.err.println("\t - requirement: " + valueUri.toString());
 
-                                String targetId = DigestUtils.sha256Hex(valueUri.toString());
+                                String targetId = factory.localResourceUriToElementId(valueUri);
                                 itemStrings.add(targetId);
                                 continue;
                             }
