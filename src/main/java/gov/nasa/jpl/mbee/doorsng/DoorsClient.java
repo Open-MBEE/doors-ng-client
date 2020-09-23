@@ -863,6 +863,8 @@ public class DoorsClient {
             }
         } while(true);
 
+        pool.shutdown();
+
         return futures;
     }
 

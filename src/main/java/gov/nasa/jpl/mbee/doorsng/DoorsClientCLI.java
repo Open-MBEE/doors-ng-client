@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -76,6 +77,8 @@ public class DoorsClientCLI {
 
             ElementFactory elementFactory = new ElementFactory(mmsProjectId, url);
 
+            System.out.println("{\"elements\":[{\"id\":\""+mmsProjectId+"_pm\"}");
+
             if (requirement != null) {
                 Set<Requirement> result = new HashSet<>();
 
@@ -97,8 +100,9 @@ public class DoorsClientCLI {
                         try {
                             req = future.get();
 
-                            // write ND-JSON stream to stdout
-                            System.out.println(req.export(doors, elementFactory, resourceShapeCache).toString());
+                            // JSON stream to stdout
+                            String jsonArray = req.export(doors, elementFactory, resourceShapeCache).toString();
+                            System.out.print(",\n"+jsonArray.substring(1, jsonArray.length()-1));
                         }
                         catch(Exception e) {
                             if(req != null) {
@@ -112,11 +116,15 @@ public class DoorsClientCLI {
                 }
 
                 pool.shutdown();
+                pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 
                 errors.putAll(doors.getErrors());
             }
 
-            export.put("elements", exports);
+//            export.put("elements", exports);
+
+            System.out.println("\n]");
+
             JSONObject errorReport = new JSONObject();
             errorReport.put("errors", errors);
             System.err.println(errorReport);
@@ -127,7 +135,7 @@ public class DoorsClientCLI {
 
         } finally {
 
-            saveFile("export.json", export.toString(4));
+//            saveFile("export.json", export.toString(4));
 //            System.out.println(response.toString(4));
 
             if(errors.size() >= 1) {
