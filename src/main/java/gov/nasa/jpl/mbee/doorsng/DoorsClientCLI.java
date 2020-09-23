@@ -1,6 +1,7 @@
 package gov.nasa.jpl.mbee.doorsng;
 
 import gov.nasa.jpl.mbee.doorsng.MmsAdapter.ElementFactory;
+import gov.nasa.jpl.mbee.doorsng.MmsAdapter.MmsClass;
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 import org.apache.commons.cli.*;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
@@ -77,7 +78,9 @@ public class DoorsClientCLI {
 
             ElementFactory elementFactory = new ElementFactory(mmsProjectId, url);
 
-            System.out.println("{\"elements\":[{\"id\":\""+mmsProjectId+"_pm\"}");
+            MmsClass rootPm = elementFactory.createClass(mmsProjectId+"_pm", project);
+
+            System.out.println("{\"elements\":["+rootPm.getSerialization());
 
             if (requirement != null) {
                 Set<Requirement> result = new HashSet<>();
@@ -90,9 +93,6 @@ public class DoorsClientCLI {
                 }
             } else {
                 ExecutorService pool = Executors.newFixedThreadPool(32);
-
-                List<Future<Requirement>> futures = new ArrayList<>();
-                List<JSONObject> finalExports = exports;
 
                 for(Future<Requirement> future: doors.getRequirementsFutures(32)) {
                     pool.submit(() -> {
@@ -123,7 +123,7 @@ public class DoorsClientCLI {
 
 //            export.put("elements", exports);
 
-            System.out.println("\n]");
+            System.out.println("\n]}");
 
             JSONObject errorReport = new JSONObject();
             errorReport.put("errors", errors);
