@@ -78,7 +78,7 @@ public class MmsClass extends MmsElement {
     private MmsAttribute addAttribute(String key, String label, String typeId) {
         String baseKeyId = id+"_"+key;
         String hashedKeyId = DigestUtils.sha256Hex(baseKeyId);
-        MmsAttribute attribute = new MmsAttribute(factory, baseKeyId, id, label, typeId);
+        MmsAttribute attribute = new MmsAttribute(factory, hashedKeyId, id, label, typeId);
         attribute.init();
         baggage.add(attribute);
         return attribute;
