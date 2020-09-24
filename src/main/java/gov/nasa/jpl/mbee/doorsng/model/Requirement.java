@@ -325,7 +325,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
                 // URIs
                 if(itemObjects.get(0) instanceof URI) {
-                    ArrayList<URI> itemUris = (ArrayList) valueObject;
+                    ArrayList<URI> itemUris = (ArrayList) itemObjects;
                     ArrayList<String> itemStrings = new ArrayList<>();
 
                     // each item

@@ -57,7 +57,7 @@ public class MmsClass extends MmsElement {
     public JSONObject getSerialization() {
         this
             .put("ownedAttributeIds", baggage.stream()
-                .map(entity -> entity.getId())
+                .map(MmsEntity::getId)
                 .collect(Collectors.toList()))
             ;
 
@@ -69,7 +69,7 @@ public class MmsClass extends MmsElement {
 
         list.add(getSerialization());
         list.addAll(baggage.stream()
-            .map(entity -> entity.getSerialization())
+            .map(MmsEntity::getSerialization)
             .collect(Collectors.toList()));
 
         return list;
@@ -191,7 +191,7 @@ public class MmsClass extends MmsElement {
         MmsLiteral container = new MmsLiteral(factory, attribute) {
             @Override
             public String getType() {
-                return null;
+                return "Expression";
             }
 
             @Override
@@ -213,7 +213,7 @@ public class MmsClass extends MmsElement {
             MmsLiteral valueEntity = new MmsLiteral(factory, container, index+"") {
                 @Override
                 public String getType() {
-                    return null;
+                    return "LiteralString";
                 }
 
                 @Override
