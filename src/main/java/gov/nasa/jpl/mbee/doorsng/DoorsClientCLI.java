@@ -47,6 +47,7 @@ public class DoorsClientCLI {
         options.addOption("project", true, "project area");
         options.addOption("requirement", true, "requirement");
         options.addOption("resource", true, "resource");
+        options.addOption("threads", true, "number of threads / concurrent connections to use when crawling DNG");
 
         CommandLineParser cliParser = new GnuParser();
 
@@ -65,6 +66,7 @@ public class DoorsClientCLI {
         String project = cmd.getOptionValue("project");
         String requirement = cmd.getOptionValue("requirement");
         String mmsProjectId = cmd.getOptionValue("mms-project");
+        int nThreads = cmd.hasOption("threads")? Integer.min(1, Integer.parseInt(cmd.getOptionValue("threads"))): 1;
 
         JSONObject export = new JSONObject();
 
@@ -92,9 +94,9 @@ public class DoorsClientCLI {
                     errors.put(requirement, e.getMessage());
                 }
             } else {
-                ExecutorService pool = Executors.newFixedThreadPool(32);
+                ExecutorService pool = Executors.newFixedThreadPool(nThreads);
 
-                for(Future<Requirement> future: doors.getRequirementsFutures(32)) {
+                for(Future<Requirement> future: doors.getRequirementsFutures(nThreads)) {
                     pool.submit(() -> {
                         Requirement req = null;
                         try {

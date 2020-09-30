@@ -16,6 +16,9 @@ import org.json.JSONObject;
 import javax.xml.namespace.QName;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,6 +32,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
     private static final String FOAF_PERSON = "http://xmlns.com/foaf/0.1/Person";
     private static final String FOAF_NAME = "http://xmlns.com/foaf/0.1/name";
     private static final String NULL_TITLE_POINTER = "";
+    private static final ZoneId LOCAL_ZONE = ZoneId.of("America/Los_Angeles");
 
     private String parseSimpleTitle(Model model, Resource subject) {
         Statement dcTitle = model.getProperty(subject, model.createProperty(DC_TITLE));
@@ -179,7 +183,13 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
 
     public List<JSONObject> export(DoorsClient doors, ElementFactory factory, Map<URI, ResourceShape> resourceShapeCache) throws URISyntaxException, RuntimeException {
-        MmsClass requirement = factory.createClass(factory.localResourceUriToElementId(getAbout()), getTitle());
+        MmsClass requirement;
+        try {
+            requirement = factory.createClass(factory.localResourceUriToElementId(getAbout()), getTitle());
+        }
+        catch(Exception e) {
+            throw new RuntimeException(e.getMessage()+"; while trying to export it as a requirement");
+        }
 
         System.err.println("<"+getAbout()+">");
 
@@ -257,9 +267,11 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 //            System.err.println("["+propertyUri.toString()+" ==> "+valueObject.toString()+"]");
             System.err.printf("~~ (%s) \"%s\" <%s>%n", valueObject == null? "null": valueObject.getClass().getName(), propertyLabel, propertyUri);
 
+            // String
             if(valueObject instanceof String) {
                 requirement.addStringProperty(propertyId, propertyLabel, (String) valueObject);
             }
+            // URI
             else if(valueObject instanceof URI) {
                 URI valueUri = (URI) valueObject;
                 System.err.println("\tTesting <"+valueUri.toString()+">");
@@ -305,15 +317,26 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
                     requirement.addStringProperty(propertyId, propertyLabel, title);
                 }
             }
+            // Integer
             else if(valueObject instanceof Integer) {
-                requirement.addIntegerProperty(propertyId, valueObject.toString(), (Integer) valueObject);
+                requirement.addIntegerProperty(propertyId, propertyLabel, (Integer) valueObject);
             }
+            // Double
             else if(valueObject instanceof Double) {
                 requirement.addRealProperty(propertyId, propertyLabel, (Double) valueObject);
             }
+            // Date
             else if(valueObject instanceof Date) {
-                requirement.addStringProperty(propertyId, propertyLabel, ((Date) valueObject).toString());
+                String iso8601 = ZonedDateTime.ofInstant(((Date) valueObject).toInstant(), LOCAL_ZONE)
+                        .format(DateTimeFormatter.ISO_DATE);
+
+                requirement.addStringProperty(propertyId, propertyLabel, iso8601);
             }
+            // Boolean
+            else if(valueObject instanceof Boolean) {
+                requirement.addBooleanProperty(propertyId, propertyLabel, (Boolean) valueObject);
+            }
+            // ArrayList<?>
             else if(valueObject instanceof ArrayList) {
                 ArrayList<Object> itemObjects = (ArrayList) valueObject;
 
@@ -360,9 +383,11 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
                     throw new RuntimeException(String.format("Encountered ArrayList<%s> value type for property \"%s\" <%s>", itemObjects.get(0).getClass().getName(), propertyLabel, propertyUri));
                 }
             }
+            // null
             else if(valueObject == null) {
                 throw new RuntimeException(String.format("Encountered null value type for property \"%s\" <%s>", propertyLabel, propertyUri));
             }
+            // other
             else {
                 throw new RuntimeException(String.format("Value type of custom property \"%s\" (%s) does not match known datatypes", propertyLabel, valueObject.getClass().getName()));
             }
