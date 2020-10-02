@@ -1,8 +1,8 @@
-package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
+package gov.nasa.jpl.mbee.doorsng.JsonAdapter;
 
-public abstract class MmsElement extends MmsEntity {
+public abstract class Uml2JsonElement extends Uml2JsonEntity {
 
-    public MmsElement(ElementFactory factory, String id, String ownerId) {
+    public Uml2JsonElement(ElementFactory factory, String id, String ownerId) {
         super(factory, id, ownerId);
     }
 

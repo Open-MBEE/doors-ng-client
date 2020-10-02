@@ -1,11 +1,11 @@
-package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
+package gov.nasa.jpl.mbee.doorsng.JsonAdapter;
 
 import org.json.JSONObject;
 
 import java.util.Collection;
 import java.util.Collections;
 
-public abstract class MmsEntity {
+public abstract class Uml2JsonEntity {
     private boolean initialized = false;
 
     protected JSONObject serialization = new JSONObject();
@@ -13,7 +13,7 @@ public abstract class MmsEntity {
     protected String id;
     protected String ownerId;
 
-    public MmsEntity(ElementFactory factory, String id, String ownerId) {
+    public Uml2JsonEntity(ElementFactory factory, String id, String ownerId) {
         this.factory = factory;
         this.id = id;
         this.ownerId = ownerId;
@@ -21,7 +21,7 @@ public abstract class MmsEntity {
 
     // this is needed in order to allow overriding subclasses to implement certain getters and write `null` instead of
     // deleting the property when a String is expected
-    protected MmsEntity put(String key, String nullableValue) {
+    protected Uml2JsonEntity put(String key, String nullableValue) {
         if(nullableValue == null) {
             serialization.put(key, JSONObject.NULL);
         }
@@ -31,12 +31,12 @@ public abstract class MmsEntity {
         return this;
     }
 
-    protected MmsEntity put(String key, Collection collection) {
+    protected Uml2JsonEntity put(String key, Collection collection) {
         serialization.put(key, collection);
         return this;
     }
 
-    protected MmsEntity put(String key, Object value) {
+    protected Uml2JsonEntity put(String key, Object value) {
         serialization.put(key, value);
         return this;
     }

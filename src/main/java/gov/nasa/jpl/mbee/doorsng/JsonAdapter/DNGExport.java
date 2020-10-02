@@ -1,15 +1,12 @@
-package gov.nasa.jpl.mbee.doorsng;
+package gov.nasa.jpl.mbee.doorsng.JsonAdapter;
 
-import gov.nasa.jpl.mbee.doorsng.MmsAdapter.ElementFactory;
-import gov.nasa.jpl.mbee.doorsng.MmsAdapter.MmsClass;
+import gov.nasa.jpl.mbee.doorsng.DoorsClient;
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 import org.apache.commons.cli.*;
 import org.eclipse.lyo.oslc4j.core.model.ResourceShape;
 import org.json.JSONObject;
 
-import java.io.BufferedWriter;
 import java.io.Console;
-import java.io.FileWriter;
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -19,12 +16,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class DoorsClientCLI {
+public class DNGExport {
 
-    private static final Logger logger = Logger.getLogger(DoorsClientCLI.class.getName());
+    private static final Logger logger = Logger.getLogger(DNGExport.class.getName());
     private static String pass;
 
-    private static Map<String, Requirement> requirementCache = new HashMap<>();
     private static Map<URI, ResourceShape> resourceShapeCache = new HashMap<>();
 
     public static void main(String[] args) throws ParseException {
@@ -59,8 +55,6 @@ public class DoorsClientCLI {
             return;
         }
 
-        String consumer = cmd.getOptionValue("consumer");
-        String secret = cmd.getOptionValue("secret");
         String user = cmd.getOptionValue("user");
         String url = cmd.getOptionValue("url");
         String project = cmd.getOptionValue("project");
@@ -68,9 +62,6 @@ public class DoorsClientCLI {
         String mmsProjectId = cmd.getOptionValue("mms-project");
         int nThreads = cmd.hasOption("threads")? Integer.min(1, Integer.parseInt(cmd.getOptionValue("threads"))): 1;
 
-        JSONObject export = new JSONObject();
-
-        List<JSONObject> exports = new ArrayList<>();
         Map<String, String> errors = new HashMap<>();
 
         try {
@@ -80,15 +71,14 @@ public class DoorsClientCLI {
 
             ElementFactory elementFactory = new ElementFactory(mmsProjectId, url);
 
-            MmsClass rootPm = elementFactory.createClass(mmsProjectId+"_pm", project);
+            Uml2JsonClass rootPm = elementFactory.createClass(mmsProjectId+"_pm", project);
 
             System.out.println("{\"elements\":["+rootPm.getSerialization());
 
             if (requirement != null) {
-                Set<Requirement> result = new HashSet<>();
-
                 try {
-                    exports = doors.getRequirement(requirement).export(doors, elementFactory, resourceShapeCache);
+                    String jsonArray = doors.getRequirement(requirement).export(doors, elementFactory, resourceShapeCache).toString();
+                    System.out.print(",\n"+jsonArray.substring(1, jsonArray.length()-1));
                 }
                 catch(Exception e) {
                     errors.put(requirement, e.getMessage());
@@ -123,7 +113,6 @@ public class DoorsClientCLI {
                 errors.putAll(doors.getErrors());
             }
 
-//            export.put("elements", exports);
 
             System.out.println("\n]}");
 
@@ -136,9 +125,6 @@ public class DoorsClientCLI {
             logger.log(Level.SEVERE, e.getMessage(), e);
 
         } finally {
-
-//            saveFile("export.json", export.toString(4));
-//            System.out.println(response.toString(4));
 
             if(errors.size() >= 1) {
                 System.exit(1);
@@ -163,15 +149,5 @@ public class DoorsClientCLI {
 
         return false;
 
-    }
-
-    private static void saveFile(String name, String contents) {
-        try {
-            BufferedWriter writer = new BufferedWriter(new FileWriter(name, true));
-            writer.append(contents);
-            writer.close();
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, e.getMessage(), e);
-        }
     }
 }

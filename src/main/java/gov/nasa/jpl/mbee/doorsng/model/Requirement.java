@@ -1,8 +1,8 @@
 package gov.nasa.jpl.mbee.doorsng.model;
 
 import gov.nasa.jpl.mbee.doorsng.DoorsClient;
-import gov.nasa.jpl.mbee.doorsng.MmsAdapter.ElementFactory;
-import gov.nasa.jpl.mbee.doorsng.MmsAdapter.MmsClass;
+import gov.nasa.jpl.mbee.doorsng.JsonAdapter.ElementFactory;
+import gov.nasa.jpl.mbee.doorsng.JsonAdapter.Uml2JsonClass;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.Statement;
@@ -183,7 +183,7 @@ public class Requirement extends org.eclipse.lyo.client.oslc.resources.Requireme
 
 
     public List<JSONObject> export(DoorsClient doors, ElementFactory factory, Map<URI, ResourceShape> resourceShapeCache) throws URISyntaxException, RuntimeException {
-        MmsClass requirement;
+        Uml2JsonClass requirement;
         try {
             requirement = factory.createClass(factory.localResourceUriToElementId(getAbout()), getTitle());
         }

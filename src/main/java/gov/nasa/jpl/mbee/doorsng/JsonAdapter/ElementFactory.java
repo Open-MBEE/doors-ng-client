@@ -1,4 +1,4 @@
-package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
+package gov.nasa.jpl.mbee.doorsng.JsonAdapter;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -16,10 +16,10 @@ public class ElementFactory {
         return projectId;
     }
 
-    public MmsClass createClass(String id, String name) {
-        MmsClass mmsClass = new MmsClass(this, id, name);
-        mmsClass.init();
-        return mmsClass;
+    public Uml2JsonClass createClass(String id, String name) {
+        Uml2JsonClass uml2JsonClass = new Uml2JsonClass(this, id, name);
+        uml2JsonClass.init();
+        return uml2JsonClass;
     }
 
     public String getAuthority() {

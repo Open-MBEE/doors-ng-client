@@ -1,4 +1,4 @@
-package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
+package gov.nasa.jpl.mbee.doorsng.JsonAdapter;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.lyo.oslc4j.core.model.Link;
@@ -11,11 +11,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class MmsClass extends MmsElement {
+public class Uml2JsonClass extends Uml2JsonElement {
     protected String name;
-    protected ArrayList<MmsEntity> baggage = new ArrayList<>();
+    protected ArrayList<Uml2JsonEntity> baggage = new ArrayList<>();
 
-    public MmsClass(ElementFactory factory, String id, String name) {
+    public Uml2JsonClass(ElementFactory factory, String id, String name) {
         super(factory, id, factory.getProjectId() + "_pm");
         this.name = name;
     }
@@ -57,7 +57,7 @@ public class MmsClass extends MmsElement {
     public JSONObject getSerialization() {
         this
             .put("ownedAttributeIds", baggage.stream()
-                .map(MmsEntity::getId)
+                .map(Uml2JsonEntity::getId)
                 .collect(Collectors.toList()))
             ;
 
@@ -69,27 +69,27 @@ public class MmsClass extends MmsElement {
 
         list.add(getSerialization());
         list.addAll(baggage.stream()
-            .map(MmsEntity::getSerialization)
+            .map(Uml2JsonEntity::getSerialization)
             .collect(Collectors.toList()));
 
         return list;
     }
 
-    private MmsAttribute addAttribute(String key, String label, String typeId) {
+    private Uml2JsonAttribute addAttribute(String key, String label, String typeId) {
         String baseKeyId = id+"_"+key;
         String hashedKeyId = DigestUtils.sha256Hex(baseKeyId);
-        MmsAttribute attribute = new MmsAttribute(factory, hashedKeyId, id, label, typeId);
+        Uml2JsonAttribute attribute = new Uml2JsonAttribute(factory, hashedKeyId, id, label, typeId);
         attribute.init();
         baggage.add(attribute);
         return attribute;
     }
 
-    public MmsClass addStringProperty(String key, String label, String value) {
+    public Uml2JsonClass addStringProperty(String key, String label, String value) {
         if(value == null) return addNullProperty(key, label);
 
-        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.STRING_TYPE_ID);
+        Uml2JsonAttribute attribute = addAttribute(key, label, Uml2JsonAttribute.STRING_TYPE_ID);
 
-        attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
+        attribute.setDefaultValue(new Uml2JsonLiteral(factory, attribute) {
             @Override
             public String getType() {
                 return "LiteralString";
@@ -105,10 +105,10 @@ public class MmsClass extends MmsElement {
         return this;
     }
 
-    public MmsClass addIntegerProperty(String key, String label, int value) {
-        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.INTEGER_TYPE_ID);
+    public Uml2JsonClass addIntegerProperty(String key, String label, int value) {
+        Uml2JsonAttribute attribute = addAttribute(key, label, Uml2JsonAttribute.INTEGER_TYPE_ID);
 
-        attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
+        attribute.setDefaultValue(new Uml2JsonLiteral(factory, attribute) {
             @Override
             public String getType() {
                 return "LiteralInteger";
@@ -124,10 +124,10 @@ public class MmsClass extends MmsElement {
         return this;
     }
 
-    public MmsClass addRealProperty(String key, String label, double value) {
-        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.REAL_TYPE_ID);
+    public Uml2JsonClass addRealProperty(String key, String label, double value) {
+        Uml2JsonAttribute attribute = addAttribute(key, label, Uml2JsonAttribute.REAL_TYPE_ID);
 
-        attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
+        attribute.setDefaultValue(new Uml2JsonLiteral(factory, attribute) {
             @Override
             public String getType() {
                 return "LiteralReal";
@@ -143,10 +143,10 @@ public class MmsClass extends MmsElement {
         return this;
     }
 
-    public MmsClass addBooleanProperty(String key, String label, boolean value) {
-        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.BOOLEAN_TYPE_ID);
+    public Uml2JsonClass addBooleanProperty(String key, String label, boolean value) {
+        Uml2JsonAttribute attribute = addAttribute(key, label, Uml2JsonAttribute.BOOLEAN_TYPE_ID);
 
-        attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
+        attribute.setDefaultValue(new Uml2JsonLiteral(factory, attribute) {
             @Override
             public String getType() {
                 return "LiteralBoolean";
@@ -162,10 +162,10 @@ public class MmsClass extends MmsElement {
         return this;
     }
 
-    public MmsClass addNullProperty(String key, String label) {
-        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.NULL_TYPE_ID);
+    public Uml2JsonClass addNullProperty(String key, String label) {
+        Uml2JsonAttribute attribute = addAttribute(key, label, Uml2JsonAttribute.NULL_TYPE_ID);
 
-        attribute.setDefaultValue(new MmsLiteral(factory, attribute) {
+        attribute.setDefaultValue(new Uml2JsonLiteral(factory, attribute) {
             @Override
             public String getType() {
                 return "LiteralNull";
@@ -183,12 +183,12 @@ public class MmsClass extends MmsElement {
         return this;
     }
 
-    public MmsClass addStringArrayProperty(String key, String label, List<String> values) {
-        MmsAttribute attribute = addAttribute(key, label, MmsAttribute.STRING_TYPE_ID);
+    public Uml2JsonClass addStringArrayProperty(String key, String label, List<String> values) {
+        Uml2JsonAttribute attribute = addAttribute(key, label, Uml2JsonAttribute.STRING_TYPE_ID);
 
         JSONArray valuesArray = new JSONArray();
 
-        MmsLiteral container = new MmsLiteral(factory, attribute) {
+        Uml2JsonLiteral container = new Uml2JsonLiteral(factory, attribute) {
             @Override
             public String getType() {
                 return "Expression";
@@ -210,7 +210,7 @@ public class MmsClass extends MmsElement {
         for(int index=0; index<values.size(); index++) {
             String value = values.get(index);
 
-            MmsLiteral valueEntity = new MmsLiteral(factory, container, index+"") {
+            Uml2JsonLiteral valueEntity = new Uml2JsonLiteral(factory, container, index+"") {
                 @Override
                 public String getType() {
                     return "LiteralString";
@@ -233,18 +233,18 @@ public class MmsClass extends MmsElement {
         return this;
     }
 
-    public MmsClass addRelation(String key, String label, String targetId) {
+    public Uml2JsonClass addRelation(String key, String label, String targetId) {
         String associationId = DigestUtils.sha256Hex("association:"+key+":"+(id.compareTo(targetId) < 0? id+"."+targetId: targetId+"."+id));
-        MmsAssociation association = new MmsAssociation(factory, associationId, label, targetId);
+        Uml2JsonAssociation association = new Uml2JsonAssociation(factory, associationId, label, targetId);
         association.init();
         baggage.add(association);
 
-        MmsAttribute attribute = addAttribute(key, label, targetId);
+        Uml2JsonAttribute attribute = addAttribute(key, label, targetId);
         attribute.setAssociationId(associationId);
         return this;
     }
 
-    public MmsClass addLinks(String key, String label, Link[] links) {
+    public Uml2JsonClass addLinks(String key, String label, Link[] links) {
         return addStringArrayProperty(key, label, Arrays.stream(links)
             .map(link -> factory.localResourceUriToElementId(link.getValue()))
             .collect(Collectors.toList()));

@@ -1,10 +1,10 @@
-package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
+package gov.nasa.jpl.mbee.doorsng.JsonAdapter;
 
 import java.util.Collections;
 
-public class MmsAssociation extends MmsClass {
+public class Uml2JsonAssociation extends Uml2JsonClass {
     protected String targetId;
-    public MmsAssociation(ElementFactory factory, String id, String ownerId, String targetId) {
+    public Uml2JsonAssociation(ElementFactory factory, String id, String ownerId, String targetId) {
         super(factory, id, ownerId);
         this.targetId = targetId;
     }

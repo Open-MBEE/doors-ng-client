@@ -1,15 +1,15 @@
-package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
+package gov.nasa.jpl.mbee.doorsng.JsonAdapter;
 
 import org.json.JSONObject;
 
-public abstract class MmsLiteral extends MmsEntity {
-    MmsEntity owner;
-    public MmsLiteral(ElementFactory factory, MmsEntity owner) {
+public abstract class Uml2JsonLiteral extends Uml2JsonEntity {
+    Uml2JsonEntity owner;
+    public Uml2JsonLiteral(ElementFactory factory, Uml2JsonEntity owner) {
         super(factory, owner.getId()+"_value", owner.getId());
         this.owner = owner;
     }
 
-    public MmsLiteral(ElementFactory factory, MmsEntity owner, String idMod) {
+    public Uml2JsonLiteral(ElementFactory factory, Uml2JsonEntity owner, String idMod) {
         super(factory, owner.getId()+"_value_"+idMod, owner.getId());
         this.owner = owner;
     }

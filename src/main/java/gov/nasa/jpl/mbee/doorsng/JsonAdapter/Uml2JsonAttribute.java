@@ -1,10 +1,10 @@
-package gov.nasa.jpl.mbee.doorsng.MmsAdapter;
+package gov.nasa.jpl.mbee.doorsng.JsonAdapter;
 
 import org.json.JSONObject;
 
 import java.util.Collections;
 
-public class MmsAttribute extends MmsElement {
+public class Uml2JsonAttribute extends Uml2JsonElement {
     public static final String STRING_TYPE_ID = "_9_0_2_91a0295_1110274713995_297054_0";
     public static final String INTEGER_TYPE_ID = "donce_1051693917650_319078_0";
     public static final String REAL_TYPE_ID = "_17_0beta_f720368_1291217394082_340077_1886";
@@ -14,7 +14,7 @@ public class MmsAttribute extends MmsElement {
     protected String typeId;
     protected String name;
 
-    public MmsAttribute(ElementFactory factory, String id, String ownerId, String name, String typeId) {
+    public Uml2JsonAttribute(ElementFactory factory, String id, String ownerId, String name, String typeId) {
         super(factory, id, ownerId);
         this.name = name;
         this.typeId = typeId;
@@ -64,13 +64,13 @@ public class MmsAttribute extends MmsElement {
         return this.name;
     }
 
-    public MmsAttribute setDefaultValue(MmsLiteral defaultValue) {
+    public Uml2JsonAttribute setDefaultValue(Uml2JsonLiteral defaultValue) {
         defaultValue.init();
         this.put("defaultValue", defaultValue.getSerialization());
         return this;
     }
 
-    public MmsAttribute setAssociationId(String associationId) {
+    public Uml2JsonAttribute setAssociationId(String associationId) {
         this.put("associationId", associationId);
         return this;
     }
