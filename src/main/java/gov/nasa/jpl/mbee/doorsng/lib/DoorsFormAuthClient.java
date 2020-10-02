@@ -1,10 +1,6 @@
 package gov.nasa.jpl.mbee.doorsng.lib;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URISyntaxException;
 
 import javax.ws.rs.core.Response.Status;
@@ -18,17 +14,13 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.wink.client.ClientResponse;
 import org.apache.wink.client.RestClient;
 import org.eclipse.lyo.client.exception.JazzAuthErrorException;
 import org.eclipse.lyo.client.exception.JazzAuthFailedException;
 import org.eclipse.lyo.client.oslc.OSLCConstants;
-
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.Property;
-import com.hp.hpl.jena.rdf.model.Resource;
 
 import net.oauth.OAuthException;
 
@@ -41,7 +33,7 @@ import net.oauth.OAuthException;
  */
 public class DoorsFormAuthClient extends DoorsOslcClient {
 
-    private static Logger logger = Logger.getLogger(DoorsFormAuthClient.class);
+    private static Logger logger = LogManager.getLogger(DoorsFormAuthClient.class);
 
     private String url;
     private String authUrl;
@@ -242,51 +234,5 @@ public class DoorsFormAuthClient extends DoorsOslcClient {
             retval = header.getValue();
         return retval;
     }
-    
-    public ClientResponse updateResource2(String url, final String entityBody, String mediaType, String acceptType, String ifMatch) throws IOException, OAuthException, URISyntaxException {
-
-		ClientResponse response = null;
-		RestClient restClient = new RestClient(getClientConfig());
-		boolean redirect = false;
-
-		do {
-			response = restClient.resource(url).contentType(mediaType).accept(acceptType)
-					             .header(OSLCConstants.OSLC_CORE_VERSION,"2.0").header(HttpHeaders.IF_MATCH, ifMatch).put(ClientResponse.class, entityBody);
-
-			if (response.getStatusType().getFamily() == Status.Family.REDIRECTION) {
-				url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
-				response.consumeContent();
-				redirect = true;
-			} else {
-				redirect = false;
-			}
-		} while (redirect);
-
-		return response;
-	}
-    
-    public ClientResponse createResource2(String url, final String entityBody, String mediaType, String acceptType) throws IOException, OAuthException, URISyntaxException {
-
-		ClientResponse response = null;
-		RestClient restClient = new RestClient(getClientConfig());
-		boolean redirect = false;
-
-		do {
-//			response = restClient.resource(url).contentType(mediaType).accept(acceptType).header(OSLCConstants.OSLC_CORE_VERSION,"2.0").post(artifact);
-			
-			response = restClient.resource(url).contentType(mediaType).accept(acceptType).header(OSLCConstants.OSLC_CORE_VERSION,"2.0").post(ClientResponse.class, entityBody);
-
-			if (response.getStatusType().getFamily() == Status.Family.REDIRECTION) {
-				url = response.getHeaders().getFirst(HttpHeaders.LOCATION);
-				response.consumeContent();
-				redirect = true;
-			} else {
-				redirect = false;
-			}
-		} while (redirect);
-
-		return response;
-	}
-    
     
 }

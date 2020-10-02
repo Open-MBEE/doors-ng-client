@@ -14,7 +14,8 @@ import net.oauth.client.OAuthClient;
 import net.oauth.client.httpclient4.HttpClient4;
 
 import org.apache.http.HttpHeaders;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.wink.client.ClientConfig;
 import org.apache.wink.client.ClientResponse;
 import org.apache.wink.client.RestClient;
@@ -25,7 +26,7 @@ import org.eclipse.lyo.client.oslc.OAuthRedirectException;
 public class DoorsOAuthClient extends DoorsOslcClient {
 
     protected OAuthAccessor accessor;
-    private static Logger LOGGER = Logger.getLogger(DoorsOAuthClient.class);
+    private static Logger LOGGER = LogManager.getLogger(DoorsOAuthClient.class);
     private String oauth_real_name;
 
     /**

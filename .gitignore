@@ -5,3 +5,5 @@ doors.properties
 .project
 .classpath
 .settings
+.idea
+*.iml

@@ -1,13 +1,11 @@
 package gov.nasa.jpl.mbee.doorsng;
 
+import java.util.Set;
 import java.util.logging.Logger;
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import gov.nasa.jpl.mbee.doorsng.model.Requirement;
 import gov.nasa.jpl.mbee.doorsng.model.RequirementCollection;
-import gov.nasa.jpl.mbee.doorsng.model.Folder;
 
 public class DoorsStatic {
 
@@ -22,7 +20,7 @@ public class DoorsStatic {
     }
 
     public static JSONObject readRequirement(DoorsClient doors) throws Exception {
-        Requirement[] req = doors.getRequirements();
+        Set<Requirement> req = doors.getRequirements();
 
         return new JSONObject(req);
     }
